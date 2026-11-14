@@ -1,51 +1,27 @@
-# Local development stack: PostGIS, MinIO, API, frontend. No Redis, no worker (D-016).
-#   docker compose --env-file .env -f infra/docker-compose.yml up -d --build
-# scripts/local/dev.ps1 creates .env from infra/.env.example with random passwords.
+# Local stack: PostGIS, API, frontend (+ MinIO with --profile storage). No Redis, no worker (D-016).
+# Use the scripts, which create .env, build, start, seed demo data and load the database:
+#   scripts/docker/up.sh      (Linux / macOS / Git Bash)
+#   scripts/docker/up.ps1     (Windows PowerShell)
+# By hand: docker compose --env-file .env -f infra/docker-compose.yml up -d --build
 name: eae
 
 services:
   db:
     image: postgis/postgis:16-3.4
+    # PostGIS publishes amd64 images only; on Apple Silicon Docker runs them under emulation.
+    platform: linux/amd64
     environment:
       POSTGRES_USER: eae
       POSTGRES_DB: eae
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5432:5432"
+    # No host port: only the backend container talks to the database.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U eae -d eae"]
       interval: 5s
       timeout: 5s
-      retries: 20
-
-  minio:
-    # MinIO stopped publishing new community images in late 2025; this tag is pinned on purpose.
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
-    volumes:
-      - miniodata:/data
-    ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
-
-  minio-init:
-    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
-    depends_on: [minio]
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      EAE_BUCKET: ${EAE_BUCKET:-eae-data}
-    entrypoint: >
-      /bin/sh -c "
-      until mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD; do sleep 2; done;
-      mc mb --ignore-existing local/$$EAE_BUCKET;
-      echo bucket $$EAE_BUCKET ready"
-    restart: "no"
+      retries: 30
 
   backend:
     build:
@@ -53,6 +29,7 @@ services:
       dockerfile: backend/Dockerfile
       args:
         GIT_SHA: ${GIT_SHA:-unknown}
+    image: eae-backend:local
     environment:
       EAE_STORE: sql
       DATABASE_URL: postgresql+psycopg://eae:${POSTGRES_PASSWORD}@db:5432/eae
@@ -60,14 +37,15 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       EAE_STORAGE_URL: s3://${EAE_BUCKET:-eae-data}
       EAE_S3_ENDPOINT: http://minio:9000
-      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
-      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-eae-local}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-unused}
     # Migrations run before the API starts, so `up` yields a database with the schema.
     command: ["sh", "-c", "alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port 8000"]
     volumes:
-      - ../data:/data
+      # Named volume (owned by the container user) for pipeline outputs: data/processed/...
+      - eaedata:/data
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -77,10 +55,42 @@ services:
       context: ../frontend
       args:
         BACKEND_URL: http://backend:8000
+    image: eae-frontend:local
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
     depends_on: [backend]
+
+  # Object storage is optional locally (pipeline push/pull only). Start with --profile storage.
+  minio:
+    profiles: [storage]
+    # MinIO stopped publishing new community images in late 2025; this tag is pinned on purpose.
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-eae-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+
+  minio-init:
+    profiles: [storage]
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on: [minio]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-eae-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      EAE_BUCKET: ${EAE_BUCKET:-eae-data}
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD; do sleep 2; done;
+      mc mb --ignore-existing local/$$EAE_BUCKET;
+      echo bucket $$EAE_BUCKET ready"
+    restart: "no"
 
 volumes:
   pgdata:
+  eaedata:
   miniodata:

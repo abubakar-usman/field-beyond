@@ -7,6 +7,11 @@ description: Use when starting, testing, deploying or debugging the Earth Analog
 
 > Commands below are the planned interface. If a script doesn't exist yet, build it to match `docs/DEPLOYMENT.md`.
 
+## Docker (any machine)
+- Start (build, run, seed synthetic data, load PostGIS): `bash scripts/docker/up.sh` or `powershell -File scripts\docker\up.ps1`
+- Logs: `scripts/docker/logs.sh backend`; stop: `scripts/docker/down.sh` (`--wipe` deletes volumes)
+- Pipeline commands run inside the backend container: `docker compose --env-file .env -f infra/docker-compose.yml exec backend pipeline --help`
+
 ## Local (Windows laptop)
 - Check tools: `powershell -File scripts/local/check-tools.ps1`
 - Start everything: `powershell -File scripts/local/dev.ps1` (Docker Compose up, migrations, fake seed data, frontend dev server)

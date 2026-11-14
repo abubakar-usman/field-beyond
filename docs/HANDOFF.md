@@ -42,7 +42,7 @@ Scientists and engineers use places on Earth that resemble the Moon or Mars ("an
 
 ## 5. What to do next (in order)
 1. Owner: [MANUAL_STEPS.md](MANUAL_STEPS.md) Day-0 items (enable VT-x, WSL2, Docker Desktop, gcloud, GCP project, billing, budget alert). Confirm non-commercial status (EOX, FABDEM).
-2. With Docker: `powershell -File scripts/local/dev.ps1` — first real check of Compose, the migration on PostGIS, `pipeline load-db` and `SqlStore`. Pinned images to confirm: `postgis/postgis:16-3.4`, `minio/minio:RELEASE.2025-04-22T22-12-26Z`, `minio/mc:RELEASE.2025-04-16T18-13-26Z`, `ghcr.io/astral-sh/uv:0.13.8`.
+2. With Docker: `bash scripts/docker/up.sh` or `scripts\docker\up.ps1` (builds images, starts, seeds, loads PostGIS) — first real check of Compose, the migration on PostGIS, `pipeline load-db` and `SqlStore`. Pinned images to confirm: `postgis/postgis:16-3.4`, `minio/minio:RELEASE.2025-04-22T22-12-26Z`, `minio/mc:RELEASE.2025-04-16T18-13-26Z`, `ghcr.io/astral-sh/uv:0.13.8`.
 3. Data audit (`docs/data-audit.md`): open each URL in `config/products-v1.yaml`; confirm SLDEM2015 and the MOLA–HRSC blend open by range request and report the expected CRS; check Jezero has HRSC coverage.
 4. `uv run pipeline target --target mars_jezero` (small, works from the laptop), then `scripts/vm/create-vm.sh` (costs money — owner confirms) and `scripts/vm/process-region.sh earth_sahara mars_jezero`.
 5. Import the USGS Known Terrestrial Analog Sites file with `pipeline import-registry` (map its column names with the flags), then run `pipeline benchmark --region earth_atacama --target mars_jezero --out docs/eval/baseline-v1.md`.

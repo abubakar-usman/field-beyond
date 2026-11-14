@@ -8,7 +8,7 @@ SQL store.
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime
 
 from geoalchemy2.shape import from_shape
 from shapely import wkt as shp_wkt
@@ -53,8 +53,10 @@ def load_all(
                     schema_version=run.schema_version,
                     status=run.status,
                     error=run.error,
-                    started_at=run.started_at,
-                    finished_at=run.finished_at,
+                    started_at=datetime.fromisoformat(run.started_at),
+                    finished_at=datetime.fromisoformat(run.finished_at)
+                    if run.finished_at
+                    else None,
                 )
                 .on_conflict_do_nothing(index_elements=["id"])
             )
@@ -78,6 +80,17 @@ def load_all(
                 )
                 .on_conflict_do_nothing(index_elements=["id"])
             )
+            # The unique constraint cannot catch duplicates here (cell_id is NULL), so check first.
+            exists = s.scalar(
+                select(FeatureProfile.id).where(
+                    FeatureProfile.owner_type == "target",
+                    FeatureProfile.target_id == t.id,
+                    FeatureProfile.scale_m == prof.scale_m,
+                    FeatureProfile.run_id == prof.run_id,
+                )
+            )
+            if exists:
+                continue
             s.execute(
                 insert(FeatureProfile)
                 .values(
