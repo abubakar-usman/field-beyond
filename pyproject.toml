@@ -1,0 +1,91 @@
+[project]
+name = "earth-analog-explorer"
+version = "0.1.0"
+description = "Find Earth regions whose terrain resembles a chosen Moon or Mars target, and explain the match."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Non-commercial hackathon project; data licences in ATTRIBUTIONS.md" }
+dependencies = [
+    # core
+    "numpy>=2.0",
+    "pyproj>=3.6",
+    "shapely>=2.0",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "pandas>=2.2",
+    "pyarrow>=16",
+    # backend
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic-settings>=2.3",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "geoalchemy2>=0.15",
+    "psycopg[binary]>=3.2",
+    # pipeline
+    "typer>=0.12",
+    "httpx>=0.27",
+    "rasterio>=1.4",
+    "pillow>=10.4",
+]
+
+[project.optional-dependencies]
+# Object storage backends for fsspec. MinIO uses s3fs, the VM uses gcsfs.
+storage = ["fsspec>=2024.6", "s3fs>=2024.6", "gcsfs>=2024.6"]
+
+[project.scripts]
+pipeline = "pipeline.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pre-commit>=3.8",
+    "types-PyYAML",
+    "pandas-stubs",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["core", "backend", "pipeline"]
+
+[tool.uv]
+python-preference = "only-managed"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["frontend", ".claude"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
+ignore = [
+    "B008",   # FastAPI Depends() in defaults
+    "E501",   # ruff format owns line length; long strings stay readable
+    "N818",   # exception names describe the condition
+    "RUF001", "RUF002", "RUF003",  # ×, −, – are intended in scientific text
+]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/db/migrations/versions/*.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["core", "backend", "pipeline"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "core.*"
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

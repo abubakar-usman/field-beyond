@@ -107,3 +107,27 @@ Format: **ID — Title** · Date · Status · Decision · Why · Alternatives co
 **D-024 — One decision log, and the evidence panel outranks the marketing-site skill** · 2026-11-14 · Accepted
 - Decision: new decisions go only in this file. Do not also open `docs/adr/`. `design-taste-frontend` (tasteskill 2.5.1) is already installed. On a conflict, the map, the evidence panel, and `.claude/skills/scientific-copy/SKILL.md` win over that skill's landing-page rules.
 - Why: two ADR locations were specified, and the taste skill's house rules hide the numbers this product has to show.
+
+**D-025 — One Python project, not a multi-member uv workspace** · 2026-11-14 · Accepted
+- Decision: `pyproject.toml` at the root builds `core`, `backend` and `pipeline` as one package. Paths stay `core/bodies.py` etc. as documented.
+- Why: the pipeline runs inside the backend image anyway (D-016), so separate members would share every dependency and only add `src/` nesting.
+
+**D-026 — Pipeline outputs are files; the API reads them; PostGIS is loaded from them** · 2026-11-14 · Accepted
+- Decision: the pipeline writes `data/processed/` (run records, `features-<scale>m.parquet`, target profiles, previews, registry GeoJSON; layout in `core/artifacts.py`). The search reads the parquet and re-hashes it against the run record (D-019). `pipeline load-db` copies runs, cells, profiles, targets and the registry into PostGIS. `pipeline push`/`pull` sync the folder with the bucket.
+- Why: one writer, one format, and the search index never depends on the database being loaded.
+
+**D-027 — A memory store for machines without Docker** · 2026-11-14 · Accepted
+- Decision: `EAE_STORE=memory` keeps searches, candidates and reviews in process and reads evidence profiles from the verified parquet of the same run. `EAE_STORE=sql` (Compose, the VM) uses PostGIS. Both implement `backend/store/base.py`.
+- Why: the owner's laptop has no Docker yet (virtualisation is off), and tests need the full API without a database.
+
+**D-028 — Cell ids are deterministic** · 2026-11-14 · Accepted
+- Decision: `cell_id = region_ordinal × 10^8 + (iy + 5000) × 10^4 + (ix + 5000)`, where `ix`, `iy` are stride indices of the window's lower-left LAEA corner and `region_ordinal` is the region's position in the grid file (`core/grid`).
+- Why: the parquet, PostGIS and exports must agree without a database round-trip. Reordering regions in `pilot-v1.yaml` therefore needs a new grid version.
+
+**D-029 — Slope histogram CDFs assume uniform mass inside each bin** · 2026-11-14 · Accepted
+- Decision: Wasserstein-1 integrates the absolute difference of piecewise-linear CDFs between bin edges, exactly (`core/scoring.wasserstein_hist_deg`).
+- Why: D-021 fixed the unit (degrees) but not the within-bin model. Uniform mass makes two single-bin histograms differ by the distance between bin centres, which is the intuitive answer.
+
+**D-030 — EOX satellite layer off unless enabled** · 2026-11-14 · Accepted
+- Decision: the EOX layer is built only when `NEXT_PUBLIC_ENABLE_EOX=true`. Default is off.
+- Why: HANDOFF open question 2. EOX is non-commercial only and the owner has not confirmed non-commercial status yet.

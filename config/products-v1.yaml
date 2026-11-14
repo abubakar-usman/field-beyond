@@ -1,0 +1,49 @@
+# Data products the pipeline reads. Hosts must also be in config/sources.yaml.
+# URLs were written from the providers' documentation in Nov 2026.
+# Re-check each one during the Phase 1 data audit (docs/data-audit.md) before a real run.
+version: products-v1
+products:
+  - id: copernicus_glo30
+    body: earth
+    provider: copernicus
+    kind: stac_collection
+    url: https://earth-search.aws.element84.com/v1
+    collection: cop-dem-glo-30
+    # Fallback when STAC is unavailable: deterministic 1° tile names on the public bucket.
+    tile_template: "https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com/Copernicus_DSM_COG_10_{ns}{lat:02d}_00_{ew}{lon:03d}_00_DEM/Copernicus_DSM_COG_10_{ns}{lat:02d}_00_{ew}{lon:03d}_00_DEM.tif"
+    tile_size_deg: 1
+    resolution_m: 30
+    version: GLO-30 2023_1
+    licence: Copernicus DEM licence (free, attribution)
+    notes: Digital surface model. Vegetation and buildings raise roughness; WorldCover flags them.
+
+  - id: esa_worldcover_2021
+    body: earth
+    provider: esa
+    kind: s3_tiles
+    url: https://esa-worldcover.s3.eu-central-1.amazonaws.com
+    tile_template: "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{ns}{lat:02d}{ew}{lon:03d}_Map.tif"
+    tile_size_deg: 3
+    resolution_m: 10
+    version: v200 (2021)
+    licence: CC BY 4.0
+
+  - id: sldem2015
+    body: moon
+    provider: usgs_astrogeology
+    kind: url_cog
+    url: https://planetarymaps.usgs.gov/mosaic/Moon/LRO/LOLA/Lunar_LRO_LOLAKaguya_DEMmerge_60N60S_512ppd.tif
+    resolution_m: 59.2
+    version: SLDEM2015 512 ppd
+    licence: Public domain
+    notes: Read with HTTP range requests and cropped to the target; the ~11 GB file is not downloaded.
+
+  - id: mola_hrsc_blend_v2
+    body: mars
+    provider: usgs_astrogeology
+    kind: url_cog
+    url: https://planetarymaps.usgs.gov/mosaic/Mars/HRSC_MOLA_Blend/Mars_HRSC_MOLA_BlendDEM_Global_200mp_v2.tif
+    resolution_m: 200
+    version: MOLA-HRSC blend v2
+    licence: MOLA CC0; HRSC CC BY-SA 3.0 IGO
+    notes: Where HRSC is absent the blend is MOLA-interpolated and smoother. Check Jezero in the audit.

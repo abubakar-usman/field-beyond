@@ -34,3 +34,6 @@ Thumbs.db
 
 # Claude local settings
 .claude/settings.local.json
+
+# Copied from node_modules at dev/build time
+frontend/public/maplibre/

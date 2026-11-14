@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.8"
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run pytest
+      - name: Migration compiles to SQL
+        run: uv run alembic upgrade head --sql > /dev/null
+
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: npm run build
+
+  images:
+    runs-on: ubuntu-24.04
+    needs: [python, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Backend image
+        run: docker build -f backend/Dockerfile --build-arg GIT_SHA=${{ github.sha }} -t eae-backend:ci .
+      - name: Frontend image
+        run: docker build -t eae-frontend:ci frontend
+      - name: Shell scripts parse
+        run: for f in scripts/vm/*.sh; do bash -n "$f"; done

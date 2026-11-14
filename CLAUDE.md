@@ -10,7 +10,7 @@ Earth Analog Explorer: a web app that finds Earth regions whose **terrain** rese
 4. The doc for the area you're touching: SCORING, DATA_SOURCES, ARCHITECTURE, DEPLOYMENT
 
 ## Current state
-Planning plus versioned config (`config/grids`, `config/scoring`, `config/targets`, `config/sources.yaml`). No application code yet. Phase 0 (scaffold, no Redis and no worker — D-016) is next. Update `docs/HANDOFF.md` "Current state" and `CHANGELOG.md` whenever you finish a meaningful piece of work.
+Code for Phases 0–3 exists and passes its tests on synthetic data (`uv run pipeline seed-fake`). Not yet exercised: real DEM downloads, Docker Compose, PostGIS (`SqlStore`, `pipeline load-db`), and the VM scripts. See docs/HANDOFF.md. Update `docs/HANDOFF.md` "Current state" and `CHANGELOG.md` whenever you finish a meaningful piece of work.
 
 ## Hard rules (never break these)
 1. **No machine learning** for now: no embeddings, encoders, pgvector/FAISS, PyTorch, or LLM-generated summaries. Retrieval is numeric nearest-neighbour + the transparent formula in docs/SCORING.md.

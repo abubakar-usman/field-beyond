@@ -1,6 +1,6 @@
 # Architecture
 
-> Planning version. Update file paths and diagrams once code exists.
+> Code exists for every component below (2026-11-14). File-by-file flow: [WALKTHROUGH.md](WALKTHROUGH.md).
 
 ## Big picture
 

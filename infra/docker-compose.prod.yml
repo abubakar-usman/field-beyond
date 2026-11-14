@@ -1,0 +1,68 @@
+# Google Cloud VM: PostGIS, API, frontend, Caddy (automatic HTTPS). Object storage is the
+# Cloud Storage bucket, reached with the VM's service account (no key file).
+#   docker compose --env-file .env -f infra/docker-compose.prod.yml up -d
+name: eae
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: eae
+      POSTGRES_DB: eae
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eae -d eae"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    image: eae-backend:${IMAGE_TAG:-current}
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+    restart: unless-stopped
+    environment:
+      EAE_STORE: sql
+      DATABASE_URL: postgresql+psycopg://eae:${POSTGRES_PASSWORD}@db:5432/eae
+      DEMO_TOKEN: ${DEMO_TOKEN:?set DEMO_TOKEN in .env}
+      CORS_ORIGINS: https://${PUBLIC_HOSTNAME}
+      EAE_STORAGE_URL: gs://${GCS_BUCKET:-unset}
+    volumes:
+      - ../data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: eae-frontend:${IMAGE_TAG:-current}
+    build:
+      context: ../frontend
+      args:
+        BACKEND_URL: http://backend:8000
+    restart: unless-stopped
+    depends_on: [backend]
+
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    environment:
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:?set PUBLIC_HOSTNAME in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [backend, frontend]
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

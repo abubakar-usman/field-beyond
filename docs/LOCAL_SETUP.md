@@ -17,7 +17,7 @@ Intel Core i7-8565U (4 cores / 8 threads) · 15.8 GB RAM · Windows 11 Pro · **
 | VS Code 1.145 | ✅ | — |
 | curl, OpenSSH | ✅ | — |
 | Python 3.14 | ✅ but too new | Don't use directly; `uv` installs Python 3.12 for the project |
-| uv | ❌ | `winget install astral-sh.uv` |
+| uv | ✅ 0.13.8 (installed 2026-11-14; Python 3.12.16 via uv) | — |
 | WSL2 | ❌ | `wsl --install` in an **admin** terminal, then restart |
 | Docker Desktop | ❌ | `winget install Docker.DockerDesktop` (after WSL2). Free for personal, education and small teams |
 | Google Cloud CLI | ❌ | `winget install Google.CloudSDK`, then `gcloud auth login` |

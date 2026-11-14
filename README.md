@@ -4,7 +4,7 @@ Find places on Earth whose **terrain** resembles a chosen spot on the Moon or Ma
 
 Hackathon project · non-commercial · hosted on Google Cloud.
 
-> **Status (Nov 2026): planning complete, no code yet.** The next step is Phase 0 scaffolding. See [docs/HANDOFF.md](docs/HANDOFF.md).
+> **Status (Nov 2026): Phases 0–3 coded and tested on synthetic data.** Real-data runs, Docker and the VM are next. See [docs/HANDOFF.md](docs/HANDOFF.md).
 
 ## How it works (one paragraph)
 
@@ -35,20 +35,43 @@ An offline pipeline downloads free elevation data (Copernicus DEM for Earth, SLD
 
 ## Quickstart
 
-_Not available yet — will be filled in during Phase 0._ Planned:
+Without Docker (in-memory store; works on the Windows laptop today):
+
+```bash
+powershell -File scripts/local/dev.ps1 -NoDocker
+```
+
+With Docker (PostGIS + MinIO + API + frontend):
+
+```bash
+powershell -File scripts/local/dev.ps1
+```
+
+Then open http://localhost:3000 (API docs at http://localhost:8000/docs). Both modes seed **synthetic** features first, and the UI labels them as synthetic.
+
+By hand:
 
 ```bash
 uv sync
 ```
 ```bash
-docker compose -f infra/docker-compose.yml up -d
+uv run pipeline seed-fake --scale 200
 ```
 ```bash
-uv run pipeline seed-fake
+uv run uvicorn backend.main:app --port 8000
+```
+```bash
+npm --prefix frontend run dev
 ```
 
-Then open http://localhost:3000.
+Checks: `uv run pytest`, `uv run ruff check .`, `uv run mypy`, `npm --prefix frontend run lint`, `npm --prefix frontend run typecheck`.
+
+Real data (on the VM; downloads Copernicus tiles and reads the planetary DEMs by range request):
+
+```bash
+uv run pipeline run --region earth_sahara --target mars_jezero
+```
 
 ## Tech stack
 
-Next.js + TypeScript + MapLibre · FastAPI + Pydantic · Python 3.12 (uv) with Rasterio, NumPy, GeoPandas, Shapely, PyProj, scikit-learn · PostgreSQL + PostGIS · Docker Compose · Google Cloud (Compute Engine + Cloud Storage).
+Next.js + TypeScript + MapLibre · FastAPI + Pydantic · Python 3.12 (uv) with Rasterio, NumPy, pandas/PyArrow, Shapely, PyProj · PostgreSQL + PostGIS · Docker Compose · Google Cloud (Compute Engine + Cloud Storage).

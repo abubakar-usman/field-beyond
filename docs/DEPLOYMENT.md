@@ -1,6 +1,6 @@
 # Deployment (Google Cloud)
 
-> Planning version: scripts are specified here but **not written yet**. When writing them, follow this spec and keep this file in sync.
+> Scripts are written (`scripts/vm/`, `scripts/local/`) to this spec but have **not been run against a real GCP project yet**. Keep this file in sync with them.
 
 ## Target setup
 
