@@ -37,3 +37,4 @@ Thumbs.db
 
 # Copied from node_modules at dev/build time
 frontend/public/maplibre/
+*.tsbuildinfo
