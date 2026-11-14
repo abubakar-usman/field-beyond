@@ -10,11 +10,11 @@ Earth Analog Explorer: a web app that finds Earth regions whose **terrain** rese
 4. The doc for the area you're touching: SCORING, DATA_SOURCES, ARCHITECTURE, DEPLOYMENT
 
 ## Current state
-Planning only — no application code exists yet. Phase 0 (scaffold) is next. Update `docs/HANDOFF.md` "Current state" and `CHANGELOG.md` whenever you finish a meaningful piece of work.
+Planning plus versioned config (`config/grids`, `config/scoring`, `config/targets`, `config/sources.yaml`). No application code yet. Phase 0 (scaffold, no Redis and no worker — D-016) is next. Update `docs/HANDOFF.md` "Current state" and `CHANGELOG.md` whenever you finish a meaningful piece of work.
 
 ## Hard rules (never break these)
 1. **No machine learning** for now: no embeddings, encoders, pgvector/FAISS, PyTorch, or LLM-generated summaries. Retrieval is numeric nearest-neighbour + the transparent formula in docs/SCORING.md.
-2. **Never upsample** a DEM. Earth 30 m data is aggregated *down* to the target's resolution (~59 m Moon, ~200 m Mars). Add an assertion wherever resampling happens.
+2. **Never upsample** a DEM. Earth 30 m data is aggregated *down* onto the comparison grid (60 m Moon, 200 m Mars). Add an assertion wherever resampling happens. The Moon product is SLDEM2015 at ~59 m; the grid is 60 m so that product is not upsampled either (D-023).
 3. **Keep Earth, Moon and Mars coordinate systems separate.** Use each body's own radius for distances and slope. Never put lunar/Martian coordinates on an Earth basemap — planetary targets are shown as pre-rendered images.
 4. **Missing data is never a match.** Score only over mandatory features available on both sides; a window missing a mandatory feature is excluded, not scored higher. Missing values stay explicit (null + availability mask), never filled.
 5. **Wording:** scores are "configured similarity (terrain-v1)", never "probability" or "confidence". Unlisted places are "not in checked records", never "new discovery". See `.claude/skills/scientific-copy/SKILL.md`.
@@ -34,7 +34,9 @@ See IMPLEMENTATION_PLAN.md §1. Key dirs: `core/` (shared pure Python: bodies, r
 - Shell scripts for the VM are bash, idempotent, and read settings from `scripts/vm/config.env`.
 
 ## Frontend design
-Use the `design-taste-frontend` skill (taste-skill) once installed in `.claude/skills/`. Map-first layout; evidence panel is the hero of the UI; show tolerances and missing data openly.
+Map-first layout. The evidence panel is the hero: scale, each feature with both values and the tolerance, the main mismatch, missing data, the novelty label, which records were checked, and the scoring version.
+
+`design-taste-frontend` (tasteskill 2.5.1) is installed for visual craft. When one of its landing-page rules conflicts with that panel — hiding numbers, dropping captions, or forcing one marketing section per screen — the evidence panel and `.claude/skills/scientific-copy/SKILL.md` win (D-024).
 
 ## When unsure
 Prefer the simpler hackathon option in IMPLEMENTATION_PLAN.md §0.2. Record any new decision in docs/DECISIONS.md.

@@ -1,0 +1,114 @@
+# Authoritative terrain-v1 numbers. docs/SCORING.md explains the rules.
+# If a number in a doc disagrees with this file, this file wins.
+# To change anything below, copy this file to terrain-v2.yaml. Do not edit a released version in place.
+version: terrain-v1
+feature_schema_version: terrain-features-v1
+
+# Hackathon has one purpose. Vegetation and snow/ice are shown, not used as exclusions.
+purpose: exposed_terrain
+
+mandatory_features:
+  - slope_median
+  - slope_p90
+  - slope_hist
+  - relief
+  - roughness
+
+# Nearest neighbours uses only these z-scored scalars.
+# Statistics are computed on the eligible windows of the region being searched.
+retrieval_features:
+  - slope_median
+  - slope_p90
+  - relief
+  - roughness
+
+histogram_feature: slope_hist
+# ∫ from 0 to 90 of |CDF_earth(s) - CDF_target(s)| ds, with s in degrees.
+# Bin index is not the ground distance. Bins are unequal.
+histogram_distance: wasserstein_1_degrees
+slope_hist_bins_deg: [0, 2, 5, 10, 15, 20, 30, 45, 90]
+
+# Slope-family weights sum to 0.65. That is accepted for v1.
+# The Atacama benchmark is how we see whether slope is double-counted.
+# A weight change is a new scoring version.
+weights:
+  slope_hist: 0.30
+  slope_median: 0.20
+  slope_p90: 0.15
+  relief: 0.20
+  roughness: 0.15
+
+tolerances:
+  slope_hist_deg: 5
+  slope_median_deg: 5
+  slope_p90_deg: 8
+  relief_fraction_of_target: 0.50
+  relief_floor_m: 20
+  roughness_fraction_of_target: 0.50
+  roughness_floor_m: 2
+
+eligibility:
+  valid_fraction_min: 0.90
+  water_fraction_max: 0.05
+  built_up_fraction_max: 0.02
+  snow_ice: flag_only
+  vegetation: flag_only
+
+# Fractions are counts of native 10 m WorldCover pixels inside the window.
+# They are not computed after resampling land cover onto the DEM grid.
+worldcover:
+  water_classes: [80]
+  built_up_classes: [50]
+  snow_ice_classes: [70]
+  vegetation_classes: [10, 20, 30, 40, 95, 100]
+  count_from: native_10m
+
+retrieval:
+  top_k_default: 20
+  shortlist_multiplier: 10
+  standardize: zscore_eligible_windows_in_region
+
+grouping:
+  nms_iou_above: 0.3
+  tie_break: [score_desc, cell_id_asc]
+  # Survivors merge when their polygons still overlap (area > 0).
+  # Shared edges with no area stay separate candidates.
+  merge: overlap_area_gt_0
+
+novelty:
+  exclude_documented_from_candidates: true
+  documented_go_to: reference_matches
+
+# Eligible windows under this relief are the negative-control set.
+# They have already passed the water and built-up filters, so a low score
+# comes from the formula.
+negative_control:
+  eligible_relief_below_m: 30
+
+# Column contract for features.parquet and for pipeline seed-fake.
+# A mandatory feature that is null, or whose availability flag is false, excludes the window.
+parquet:
+  columns:
+    - cell_id
+    - region_id
+    - scale_m
+    - center_lon
+    - center_lat
+    - min_lon
+    - min_lat
+    - max_lon
+    - max_lat
+    - slope_median
+    - slope_p90
+    - slope_hist
+    - relief
+    - roughness
+    - valid_fraction
+    - water_fraction
+    - built_up_fraction
+    - snow_ice_fraction
+    - vegetation_fraction
+    - feature_schema_version
+    - run_id
+# The parquet SHA-256 is stored on processing_runs, not inside the file.
+# A search refuses to run when the file hash disagrees with that row.

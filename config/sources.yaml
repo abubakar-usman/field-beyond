@@ -1,0 +1,19 @@
+# Hosts an adapter may fetch. Any other URL is rejected (SSRF guard).
+# Keep this list in sync with docs/DATA_SOURCES.md.
+version: sources-v1
+hosts:
+  - copernicus-dem-30m.s3.eu-central-1.amazonaws.com
+  - copernicus-dem-30m.s3.amazonaws.com
+  - esa-worldcover.s3.eu-central-1.amazonaws.com
+  - esa-worldcover.s3.amazonaws.com
+  - earth-search.aws.element84.com
+  - planetarycomputer.microsoft.com
+  - planetarymaps.usgs.gov
+  - astrogeology.usgs.gov
+  - pgda.gsfc.nasa.gov
+  - imbrium.mit.edu
+  - pds-geosciences.wustl.edu
+  - macrostrat.org
+suffixes:
+  # Planetary Computer signs asset URLs onto Azure blob storage.
+  - .blob.core.windows.net

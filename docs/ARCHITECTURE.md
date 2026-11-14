@@ -19,13 +19,13 @@ flowchart LR
         PRE --> TGT[Target profiles<br/>+ hillshade previews]
     end
     FEA --> DB[(PostGIS<br/>cells, profiles, registry)]
-    FEA --> PQ[(features.parquet)]
+    FEA --> PQ[(features.parquet<br/>search index)]
     TGT --> DB
     REG[USGS known analog sites] --> DB
     subgraph Online app
         PQ --> SRCH[Search engine<br/>filter → kNN → score → group → novelty → explain]
-        DB --> SRCH
         SRCH --> API[FastAPI]
+        DB --> API
         API --> UI[Next.js + MapLibre]
     end
 ```
@@ -46,11 +46,12 @@ flowchart LR
 
 | Aspect | Hackathon (build now) | Full design (later) |
 |---|---|---|
-| Long jobs | None — features precomputed by CLI | Celery + Redis workers, job states |
-| Search | In-memory over `features.parquet`, < 1 s | Same, plus cached results keyed by versions |
-| Regions | Two fixed pilot regions | User-drawn areas, on-demand processing |
+| Long jobs | None — features precomputed by CLI in the backend image | Celery + Redis workers, job states |
+| `POST /searches` | Runs inline, status `completed`, no polling. Missing features → 409 `features_not_ready` | May return 202 and poll |
+| Search index | `features.parquet` only. PostGIS `feature_profiles` is the evidence store. Checksums must match | Same, plus cached results keyed by versions |
+| Regions | `earth_atacama` and `earth_sahara` from `config/grids/pilot-v1.yaml` | User-drawn areas, on-demand processing |
 | Review | One button + shared demo token | Roles, audit trail, status transitions |
-| Evaluation | One benchmark notebook | Holdouts, sensitivity sweeps, report |
+| Evaluation | One benchmark notebook (D-022) | Holdouts, sensitivity sweeps, report |
 | ML | None | None (ML is out of scope; see D-001) |
 
 ## Deployment topology (GCP)
@@ -64,8 +65,10 @@ All on one Compute Engine VM (e2-standard-4), Docker Compose.
 
 ## Coordinate systems (critical)
 - Earth: store geometry in EPSG:4326; process each pilot region in its own Lambert Azimuthal Equal-Area projection.
-- Moon: IAU_2015:30100 (sphere R = 1,737,400 m). Mars: IAU_2015:49900 (sphere R = 3,396,190 m). Process targets in a local equirectangular or LAEA projection on the correct body.
+- Moon: IAU_2015:30100 (sphere R = 1,737,400 m). Mars: IAU_2015:49900 (sphere R = 3,396,190 m). Process targets in a local LAEA on that sphere, centered on the scored point in `config/targets/`. Do not use a WGS84 datum for either body.
 - PostGIS SRIDs are Earth-only; planetary geometries are stored as GeoJSON/WKT + `body` + `crs` columns.
 
 ## Data model
 See IMPLEMENTATION_PLAN.md §5 for tables. Hackathon uses: `earth_cells`, `feature_profiles`, `planetary_targets`, `known_analog_registry`, `search_jobs`, `candidate_matches`, `review_records`, `source_assets`, `processing_runs`.
+
+Search reads `features.parquet` (one region, one `scale_m`). Evidence reads `feature_profiles`. The parquet SHA-256 is stored on the processing run; a mismatch refuses the search (D-019). Canonical ids: `mars_jezero`, `moon_taurus_littrow`, `earth_atacama`, `earth_sahara`.

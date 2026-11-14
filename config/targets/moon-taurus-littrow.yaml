@@ -1,0 +1,20 @@
+# Scored footprint is 10 km, the same size as an Earth window.
+# The preview box is valley context and is not scored.
+id: moon_taurus_littrow
+body: moon
+name: Apollo 17 Taurus-Littrow
+comparison:
+  # Lunar module, DE421 Mean Earth frame. Wagner et al. 2017, Icarus 283, via NSSDC.
+  center_lat: 20.1911
+  center_lon: 30.7723
+  footprint_m: 10000
+  # 60 m, not 59. SLDEM's ground posting near 20°N is about 56 m (longitude) to 59 m (latitude).
+  # A 59 m grid would upsample the latitude axis. 60 m is coarser than both, and coarser than Earth 30 m.
+  scale_m: 60
+  # Build LAEA on the Moon sphere from core/bodies.py (IAU_2015:30100, R = 1,737,400 m).
+  # Do not use a WGS84 datum.
+preview:
+  bbox: {west: 30.42, south: 19.89, east: 31.12, north: 20.49}
+  note: >
+    About 18 km of valley context for the hillshade. The scored profile is the
+    10 km square centered on the lunar module.

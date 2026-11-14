@@ -1,6 +1,6 @@
 # Earth Analog Explorer
 
-Find **new places on Earth whose terrain resembles a chosen spot on the Moon or Mars** — and explain, feature by feature, why they match, where they differ, and what data is missing.
+Find places on Earth whose **terrain** resembles a chosen spot on the Moon or Mars — and explain, feature by feature, why they match, where they differ, and what data is missing.
 
 Hackathon project · non-commercial · hosted on Google Cloud.
 

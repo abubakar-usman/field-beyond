@@ -2,6 +2,10 @@
 
 All sources are free. None needs an API key. Checked November 2026 — re-verify URLs and versions during the Phase 1 data audit and record results in `docs/data-audit.md`.
 
+Approved hosts are listed in [`config/sources.yaml`](../config/sources.yaml). Target footprints and pilot boxes are in [`config/targets/`](../config/targets/) and [`config/grids/pilot-v1.yaml`](../config/grids/pilot-v1.yaml).
+
+Approved hosts are listed in [`config/sources.yaml`](../config/sources.yaml). Target footprints and pilot boxes are in [`config/targets/`](../config/targets/) and [`config/grids/pilot-v1.yaml`](../config/grids/pilot-v1.yaml).
+
 ## In use
 
 ### Copernicus DEM GLO-30 (Earth elevation) — primary

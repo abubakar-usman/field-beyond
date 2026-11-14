@@ -10,8 +10,9 @@ Things that need the owner's accounts, money, sign-ins or judgement. AI agents c
 - [ ] GCP: **budget alert** $50 with alerts at 50/90/100% (Billing → Budgets & alerts)
 - [ ] Laptop: `gcloud auth login` and `gcloud config set project <id>` (browser sign-in)
 - [ ] (Optional) Register the project for Earth Engine non-commercial use, Community tier (code.earthengine.google.com)
-- [ ] GitHub: create a repo (private is fine), invite teammates
-- [ ] Answer open questions: hackathon length & team size; confirm non-commercial; keep default targets/regions?
+- [x] GitHub repo exists and `main` tracks it: `git@github.com:abubakar-usman/field-beyond`
+- [ ] Invite teammates, if anyone else is joining
+- [ ] Confirm non-commercial status, hackathon length, and team size. Target and region boxes are already in `config/`; say if you want them swapped
 
 ## Day 1 — deployment
 - [ ] Run `scripts/vm/create-vm.sh` (or let an agent run it while you watch) — creates billable resources

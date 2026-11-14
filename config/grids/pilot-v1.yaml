@@ -1,0 +1,36 @@
+# Earth search windows. Authoritative extents for the hackathon.
+# Swap a box here if the owner wants a different pilot. Do not hard-code these in Python.
+version: pilot-v1
+window_m: 10000
+stride_m: 5000
+# Cell edges fall on multiples of stride_m measured from the region LAEA origin.
+alignment: multiples_of_stride_from_laea_origin
+
+regions:
+  - id: earth_atacama
+    name: Atacama and Altiplano
+    role: benchmark
+    description: >
+      One rectangle over northern Chile, southwest Bolivia, and northwest Argentina.
+      Includes Salar de Uyuni and the San Pedro de Atacama area. Not a political boundary.
+    bbox: {west: -70.5, south: -24.5, east: -65.5, north: -19.5}
+    laea:
+      lat_0: -22.0
+      lon_0: -68.0
+      proj: "+proj=laea +lat_0=-22.0 +lon_0=-68.0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs"
+    # One cell, two profiles. 200 m serves Mars targets. 60 m serves Moon targets.
+    scales_m: [200, 60]
+
+  - id: earth_sahara
+    name: Sahara discovery pilot
+    role: discovery
+    description: >
+      One rectangle over eastern Western Sahara and northern Mauritania
+      (21.5–26°N, 13–7°W). Mali is outside this box. Documented analog sites
+      are expected to be scarce here relative to earth_atacama.
+    bbox: {west: -13.0, south: 21.5, east: -7.0, north: 26.0}
+    laea:
+      lat_0: 23.75
+      lon_0: -10.0
+      proj: "+proj=laea +lat_0=23.75 +lon_0=-10.0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs"
+    scales_m: [200, 60]

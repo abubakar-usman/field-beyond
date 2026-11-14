@@ -4,6 +4,8 @@ Source: *Earth Analog Explorer — Project Overview and System Design* — Markd
 This plan turns that design into buildable milestones. Section references (§) inside a "Why" column or written as "§N step M" point to the design document; references like §0.2 or §8.1 point to sections of this plan.
 Start-here guide for new people and AI agents: [docs/HANDOFF.md](docs/HANDOFF.md).
 
+Decisions D-016–D-024 lock the hackathon contract: no job queue, a synchronous search, ids and extents in `config/`, `features.parquet` as the only search index, and a 60 m Moon comparison grid. If an older sentence below disagrees with those decisions or with a file in `config/`, the decision and the config win.
+
 ---
 
 ## 0. Guiding decisions
@@ -11,14 +13,14 @@ Start-here guide for new people and AI agents: [docs/HANDOFF.md](docs/HANDOFF.md
 | Decision | Choice | Why |
 |---|---|---|
 | Scope | Terrain-based mathematical baseline only; **all machine-learning work (§9.2, §9.3, embeddings, LLM summaries) is out of scope for this plan** | §18: ML is an enhancement, not a prerequisite |
-| Repo shape | Single monorepo: `backend/`, `worker/`, `pipeline/`, `frontend/`, `infra/` | One versioned codebase so processing versions are traceable |
-| Python | 3.12, `uv` for dependency management, shared `core` package | Pipeline, worker and API reuse the same feature code |
+| Repo shape | Single monorepo: `core/`, `backend/`, `pipeline/`, `frontend/`, `infra/`. No `worker/` package in the hackathon (D-016) | One versioned codebase so processing versions are traceable |
+| Python | 3.12, `uv` for dependency management, shared `core` package | Pipeline CLI and API reuse the same feature code |
 | Earth pilot DEM | **Copernicus DEM GLO-30** from AWS Open Data, found via the Element84 Earth Search STAC API | Free, global, no account or key needed, commercial use allowed |
 | Lunar target DEM | **SLDEM2015** (LOLA + Kaguya merged DEM, ~59 m/px, ±60° latitude) | Best global-scale lunar DEM; public domain |
 | Martian target DEM | **MOLA–HRSC Blended DEM v2** (~200 m/px, global) | ~2× sharper than MOLA MEGDR alone, still global |
-| Comparison scale | Earth DEM is **aggregated down** to each target's resolution: one Earth feature set at ~59 m (lunar) and one at ~200 m (Mars) | §5: never upsample coarse data; compare compatible resolutions |
+| Comparison scale | Earth DEM is **aggregated down** onto a 60 m grid (Moon) and a 200 m grid (Mars). One cell, two profiles. SLDEM2015 is the ~59 m product; the grid is 60 m so that product is not upsampled (D-023) | §5: never upsample coarse data; compare compatible resolutions |
 | First targets | Mars: **Jezero crater region**; Moon: **Apollo 17 Taurus–Littrow valley region** | Both have rover/landing ground truth and DEM coverage; easy to sanity-check |
-| Pilot Earth regions | A: **Atacama + Altiplano** (Chile/Bolivia/Argentina), many documented analogs → benchmark. B: **Western Sahara (Mauritania/Mali)**, few documented analogs → discovery | One region tests "does it find known analogs?", the other "does it find new ones?" |
+| Pilot Earth regions | `earth_atacama` and `earth_sahara` in `config/grids/pilot-v1.yaml`. Atacama (Chile, Bolivia, Argentina) is the benchmark. The Sahara box is eastern Western Sahara and northern Mauritania; Mali is outside it | One region tests whether known Mars-terrain analogs rank highly; the other returns unlisted candidates |
 | Window grid | Square windows in a per-region equal-area projection (LAEA), 10 km footprint, 50% overlap — all configurable | §8 step 2 |
 | Baseline retrieval | Standardized feature vectors + scikit-learn `BallTree`/brute-force kNN in memory | §10: simple numeric nearest-neighbour search |
 | Map | MapLibre + **OpenFreeMap** base tiles (free, no key) + **EOX Sentinel-2 cloudless** satellite layer (free for non-commercial use, attribution required); Earth candidates also shown as our own DEM hillshade; **pre-rendered PNG previews** for Moon/Mars targets | §10: never place planetary coords on an Earth basemap |
@@ -81,7 +83,7 @@ No data provider needs a key for the chosen sources. All secrets live in server-
 | Download costs | Pulling data in from AWS Open Data / USGS: **$0** to us. Serving the app to demo viewers: negligible at hackathon traffic |
 | Base map + satellite layer | **$0** (OpenFreeMap + EOX, non-commercial) |
 
-**Estimated total:** about **$120/month if left running 24/7**, or **roughly $5–15 for a hackathon week** if the VM is stopped when idle. Set a **GCP budget alert** (e.g. $50) on the project so credits are never drained by surprise.
+**Estimated total:** about **$120/month if left running 24/7**. The 200 GB disk is about **$20/month even while the VM is stopped** (about $5 in a fully stopped week). A hackathon week with the VM on for a few days is about **$15–25**. Set a **GCP budget alert** (e.g. $50) on the project so credits are never drained by surprise.
 
 **If the project ever goes commercial:** replace the EOX satellite layer (e.g. MapTiler paid plan ≈ $25–30/month) and stop using FABDEM and Earth Engine's free tier. Everything else is commercial-safe.
 
@@ -94,30 +96,30 @@ The phased plan below (§2–§9) is the full roadmap. For the hackathon, build 
 ### Simplifications for the hackathon
 | Full plan | Hackathon version | Why it's safe |
 |---|---|---|
-| Celery + Redis job queue | **None.** All Earth and target features are precomputed offline by a CLI; searches run in memory in < 1 s inside FastAPI | No long requests left once features are precomputed |
-| PostGIS for everything | PostGIS for cells, profiles, registry, results; features also kept as a Parquet file loaded into memory for search | Fast and simple |
+| Celery + Redis job queue | **None.** Phase 0 does not start Redis or a worker (D-016). Features are precomputed by a CLI. `POST /searches` runs inline and returns a completed search id (D-017). Missing features return 409 `features_not_ready` | No long requests left once features are precomputed |
+| PostGIS for everything | PostGIS holds cells, profiles, registry, and results. **Search reads only `features.parquet`.** Evidence reads `feature_profiles`. The parquet SHA-256 must match the processing run (D-019) | Rank and evidence stay on the same run |
 | Full review workflow + roles | One "mark as reviewed / promising / known" button behind a shared demo token | Shows the novelty concept without auth work |
-| Formal evaluation harness | One benchmark notebook: does the app rank documented Atacama analogs highly for Jezero? Plus 2–3 negative controls | Gives a credible "it works" slide |
+| Formal evaluation harness | One benchmark notebook, defined in D-022: Mars-relevant Atacama registry rows on the reference list, plus eligible windows with relief under 30 m as negative controls | Gives a credible "it works" slide |
 | Drawn search areas | Two pre-defined pilot regions | Avoids on-demand processing |
 
 ### Priorities
 **Must (the demo fails without these)**
-1. Download Mars blended DEM over Jezero; Copernicus DEM + WorldCover over Atacama/Altiplano and Western Sahara.
-2. Feature extraction (slope median/p90/histogram, relief, roughness, valid fraction) at 200 m, with synthetic-DEM tests.
-3. 10 km windows with 5 km stride over both pilot regions; eligibility masks (water, built-up, low valid fraction).
-4. Scoring per §9.1 + nearest-neighbour shortlist + overlap grouping.
-5. Known-site check against the USGS "Known Terrestrial Analog Sites" dataset → labels *documented analog* / *not in checked records*.
-6. API: `GET /targets`, `POST /searches`, `GET /searches/{id}/candidates`, `GET /candidates/{id}/evidence`.
+1. Download the MOLA–HRSC blend for the Jezero preview box and the 10 km scored square; Copernicus DEM + WorldCover for `earth_atacama` and `earth_sahara`.
+2. Feature extraction (slope median/p90/histogram, relief, roughness, valid fraction) at 200 m, with synthetic-DEM tests. Each Earth cell also gets a 60 m profile when the lunar target is built.
+3. 10 km windows with 5 km stride from `config/grids/pilot-v1.yaml`; eligibility from `config/scoring/terrain-v1.yaml` (water, built-up, valid fraction). Vegetation and snow/ice are flags.
+4. Scoring per [docs/SCORING.md](docs/SCORING.md): four-scalar nearest neighbours, histogram at rerank, then overlap grouping.
+5. Known-site check against the USGS "Known Terrestrial Analog Sites" dataset → labels *documented analog* / *not in checked records*. Documented rows go to `reference_matches`.
+6. API: `GET /targets`, `POST /searches` (inline, status `completed`, or 409 `features_not_ready`), `GET /searches/{id}/candidates` (includes `reference_matches`), `GET /candidates/{id}/evidence`. No polling.
 7. Frontend: target picker with Mars preview image → map of ranked candidates → evidence panel (feature bars Earth vs target, slope histogram overlay, mismatches, missing data, novelty label).
 8. Deployed on the GCP VM with a public URL using the §8.2 scripts (`create-vm.sh`, `bootstrap.sh`, `deploy.sh`).
 9. `README.md`, `docs/WALKTHROUGH.md`, `CLAUDE.md`, `ATTRIBUTIONS.md` and the taste skill in place from day 1.
 
 **Should (big demo value, add if time allows)**
-10. Lunar target (Taurus–Littrow) at 59 m.
+10. Lunar target (`moon_taurus_littrow`) on the 60 m grid.
 11. Side-by-side hillshade: target vs candidate.
 12. Satellite layer (EOX) toggle; documented analogs as a reference layer.
 13. CSV/GeoJSON export with the search configuration.
-14. Weight sliders that re-rank live (shows the score is transparent and configurable).
+14. Weight sliders that rescore the current shortlist (they do not run a new nearest-neighbour search). The UI says so.
 
 **Could (only if everything else is done)**
 15. Geology from Macrostrat for candidates.
@@ -132,14 +134,10 @@ The phased plan below (§2–§9) is the full roadmap. For the hackathon, build 
 | Frontend | Next.js + MapLibre map, target picker, evidence panel, styling |
 | (4th, if any) | Benchmark notebook, demo story, slides, Should-list items |
 
-Data work blocks everything else, so on day 1 the backend and frontend build against a small **fake feature file** with the real schema, then switch to real data when it lands.
+Data work blocks everything else, so on day 1 the backend and frontend build against a small **fake `features.parquet`** whose columns are listed in `config/scoring/terrain-v1.yaml`, then switch to real data when it lands.
 
 ### Demo story (2–3 minutes)
-1. Pick Jezero crater → show its terrain profile.
-2. Search the Western Sahara → map lights up with candidates, top ones labelled *not in checked records*.
-3. Open the top candidate → feature-by-feature comparison, what matches, what doesn't, what data is missing.
-4. Switch to Atacama → the app independently ranks known analogs highly (credibility check).
-5. Close on limitations: terrain similarity only, novelty needs expert review.
+Same beats as [docs/DEMO.md](docs/DEMO.md): Jezero's 10 km profile, `earth_sahara` candidates labelled *not in checked records*, the evidence panel, then `earth_atacama` judged on `reference_matches` for registry rows linked to Mars terrain or Jezero. A weak ranking is reported as a property of terrain-v1.
 
 ---
 
@@ -198,7 +196,7 @@ earth-analog-explorer/
 │   ├── scoring/               # similarity functions, weighting, versions
 │   ├── grid/                  # window generation, grid versioning
 │   └── provenance.py          # checksums, run records
-├── pipeline/                  # offline ingestion + processing (CLI, Celery tasks)
+├── pipeline/                  # offline ingestion + processing (CLI; runs in the backend image)
 │   ├── adapters/              # stac.py, pds.py, ... (one per provider)
 │   ├── ingest.py
 │   ├── preprocess.py
@@ -210,12 +208,12 @@ earth-analog-explorer/
 │   ├── db/                    # SQLAlchemy models + Alembic migrations
 │   ├── search/                # retrieval, rerank, grouping, novelty, explanations
 │   └── auth/
-├── worker/                    # Celery app config, task registration
 ├── frontend/                  # Next.js + TypeScript + MapLibre
 ├── config/
 │   ├── scoring/terrain-v1.yaml
 │   ├── grids/pilot-v1.yaml
-│   └── sources.yaml           # approved hosts + credentials references
+│   ├── targets/               # mars-jezero.yaml, moon-taurus-littrow.yaml
+│   └── sources.yaml           # approved hosts
 ├── infra/
 │   ├── docker-compose.yml      # local dev: postgis, minio, api, frontend
 │   ├── docker-compose.prod.yml # VM: postgis, api, frontend, caddy
@@ -239,13 +237,13 @@ earth-analog-explorer/
 **Goal:** everything runs locally with one command; nothing scientific yet.
 
 1. Monorepo scaffold, `uv` workspace, ruff + mypy + pytest, pre-commit.
-2. `docker-compose.yml`: PostGIS 16, Redis, MinIO locally (Cloud Storage on GCP, same S3-style code via `fsspec`/`gcsfs`), API, worker, frontend.
-3. Config system (pydantic-settings); secrets only via env vars / secret store, never in the frontend bundle (§15).
+2. `docker-compose.yml`: PostGIS 16, MinIO locally (Cloud Storage on GCP, same S3-style code via `fsspec`/`gcsfs`), API, frontend. No Redis and no worker (D-016).
+3. Config system (pydantic-settings) reading `config/`; secrets only via env vars / secret store, never in the frontend bundle (§15).
 4. Alembic migration #1 with all tables from §5 below (empty).
 5. CI pipeline: lint, type-check, unit tests, build images.
 6. `core/bodies.py`: body constants and CRS strings (Moon IAU_2015:30100, Mars IAU_2015:49900 or equivalent PROJ strings; Earth EPSG:4326 / per-region LAEA). Unit tests that distances/derivatives use the correct radius.
 
-**Exit criteria:** `docker compose up` gives a healthy API (`/health`), worker, DB with schema, MinIO bucket, and a blank Next.js page.
+**Exit criteria:** `docker compose up` gives a healthy API (`/health`), a database with the schema, a MinIO bucket, and a blank Next.js page. There is no worker container.
 
 ---
 
@@ -255,9 +253,9 @@ earth-analog-explorer/
 
 ### 3.1 Data audit (deliverable: `docs/data-audit.md`)
 - For each source: product ID/version, resolution, coverage of target & pilot, license, access method (auth, signed URLs, rate limits).
-- Draw the Jezero and Taurus–Littrow target boundaries and record them as GeoJSON in body-native coordinates.
+- The scored footprints and preview boxes are already in `config/targets/`. The audit checks those boxes against the DEM, then writes them out as GeoJSON in body-native coordinates.
 - Confirm DEM coverage and quality over both targets and both pilot regions (check Copernicus tile gaps, SLDEM2015 artefacts, HRSC vs MOLA-only areas in the blended DEM).
-- Confirm comparison resolution: a 10 km window holds ~50×50 px at 200 m (Mars) and ~170×170 px at 59 m (Moon), which is enough for stable slope histograms.
+- Confirm the grids: a 10 km window holds 50×50 px at 200 m (Mars) and about 167×167 px at 60 m (Moon), which is enough for stable slope histograms.
 
 ### 3.2 Source adapters & ingestion
 - `Adapter` interface: `discover(aoi) -> [AssetRef]`, `fetch(asset) -> local/object path`, with retries + exponential backoff, provider rate limits, credential injection.
@@ -266,10 +264,10 @@ earth-analog-explorer/
 - Every fetched file → `source_assets` row (provider, body, footprint, resolution, version, SHA-256, access metadata) and stored in object storage.
 
 ### 3.3 Body-aware preprocessing
-- Clip/mosaic, reproject to a local equal-area or conformal projection **on the correct body**.
-- Aggregate Earth 30 m DEM to target resolution (mean/area-weighted resampling only — no upsampling anywhere; assert in code).
-- Masks from ESA WorldCover: nodata, water, built-up, plus snow/ice and vegetation share as purpose-dependent flags, not hard drops. Vegetation share also flags windows where Copernicus (a surface model including trees) may overstate roughness.
-- Each step logged as a `processing_runs` row (inputs, code version = git SHA, config hash, status, errors).
+- Clip/mosaic, reproject to the region's LAEA (Earth) or a local LAEA on the correct sphere (Moon, Mars). Proj strings and radii come from `config/grids/pilot-v1.yaml` and `core/bodies.py`.
+- Aggregate onto the comparison grid with area-weighted averaging. Pixel edges are multiples of 200 m or 60 m from the LAEA origin. Assert both output axes are coarser than or equal to the source ground pixel. This applies to Earth, Moon, and Mars rasters (D-023).
+- Count WorldCover at native 10 m using the class lists in `terrain-v1.yaml`. Water and built-up can exclude a window. Snow/ice and vegetation are flags under `exposed_terrain`. Vegetation also flags windows where Copernicus (a surface model) may overstate roughness.
+- Each step logged as a `processing_runs` row (inputs, code version = git SHA, config hash, parquet SHA-256, status, errors).
 
 ### 3.4 Window generation
 - `core/grid`: tile region in LAEA, 10 km windows, configurable stride (default 5 km). Grid identified by `grid_version`.
@@ -284,48 +282,50 @@ earth-analog-explorer/
 | Valid fraction | Share of non-masked pixels; drives eligibility |
 | Landforms (optional) | Placeholder schema field; populated only from documented classifications |
 
-- Output a `feature_profiles` row: values, availability mask, scale, `feature_schema_version`, source asset references.
+- Output one `feature_profiles` row per scale (200 m and 60 m) and the matching line in `features.parquet`. Availability flags must match null values. Columns are in `terrain-v1.yaml`.
 - **Golden tests:** synthetic DEMs (flat plane, tilted plane, cone, known noise) with analytically known slope/relief/roughness, run on all three bodies.
 
 ### 3.6 Target profiles
 - `planetary_targets` row + its `feature_profiles` (one profile per scale) + pre-rendered hillshade PNG in object storage.
 
-**Exit criteria:** CLI `pipeline run --region pilot_1 --target mars_target_01` reproducibly produces identical feature values (bit-for-bit or within tolerance) on re-run; all rows carry provenance; golden tests pass.
+**Exit criteria:** CLI `pipeline run --region earth_atacama --target mars_jezero` reproducibly produces identical feature values (bit-for-bit or within tolerance) on re-run; all rows carry provenance; golden tests pass; the parquet SHA-256 on the processing run matches the file.
 
 ---
 
 ## 4. Phase 2 — Discovery application (≈4 weeks)
 
 ### 4.1 Search engine (`backend/search/`)
-1. **Eligibility filter** (§8 step 3): valid fraction ≥ threshold, land-only, purpose-specific exclusions; all thresholds in the scoring config.
-2. **Retrieval** (§8 step 5): standardize mandatory features (z-score using Earth pilot statistics, stored with the index version), kNN to target vector, shortlist size `k_retrieve` (e.g. 10 × `top_k`). Index built per (region, grid_version, feature_version) and cached in object storage.
-3. **Rerank** (§9.1):
+1. **Eligibility filter** (§8 step 3): thresholds in `config/scoring/terrain-v1.yaml`. Purpose `exposed_terrain` drops windows on valid fraction, water, and built-up. Snow/ice and vegetation are flags.
+2. **Retrieval** (D-020): z-score `slope_median`, `slope_p90`, `relief`, and `roughness` using eligible windows of the region being searched. The histogram is not in the tree. Shortlist `10 × top_k`. Read `features.parquet` for that region and `scale_m` only, and refuse the search if its SHA-256 does not match the processing run.
+3. **Rerank** (§9.1, D-021):
    - Scalar features: `similarity_i = 100 * max(0, 1 - |earth_i - target_i| / tolerance_i)`
-   - Slope histogram: `100 * (1 - Wasserstein-1 / tolerance)` or histogram intersection — choose one, document it.
+   - Slope histogram: Wasserstein-1 in degrees, `∫|CDF_earth − CDF_target| ds` from 0° to 90°. Not histogram intersection, and not bin index.
+   - Relief and roughness tolerances use the floors in the yaml. Store the absolute tolerance used.
    - Weighted mean **only over mandatory features available for both**; a candidate missing a mandatory feature is excluded, not scored higher (§8 step 6).
-   - Tolerances & weights from `config/scoring/terrain-v1.yaml`; config hash stored with every result.
-4. **Spatial grouping** (§8 step 7): non-maximum suppression over overlapping windows (IoU threshold), then union adjacent survivors into candidate regions; keep member windows and their individual scores.
-5. **Novelty check** (§3 novelty policy): intersect with `known_analog_registry`; assign status `documented_analog` / `not_in_checked_records` / `under_review`; store which registry version & review date were checked. Exclude documented ones by default; return them in a separate reference list.
-6. **Explanations** (§8 step 8): deterministic templates from measured differences, e.g. *"Median slope 7.9° vs target 8.4° (within tolerance); relief 410 m vs 620 m (−34%, main mismatch); geology unavailable."*
+   - Tolerances and weights from `config/scoring/terrain-v1.yaml`; config hash stored with every result.
+4. **Spatial grouping** (D-021): greedy non-maximum suppression, IoU > 0.3, tie-break higher score then smaller `cell_id`. Merge survivors whose intersection area is still > 0. Keep member windows and their individual scores. Worked example in [docs/SCORING.md](docs/SCORING.md).
+5. **Novelty check** (§3 novelty policy, D-022): intersect with `known_analog_registry`; assign status `documented_analog` / `not_in_checked_records` / `under_review`; store which registry version and review date were checked. Exclude documented ones from `candidates`; return them in `reference_matches`.
+6. **Explanations** (§8 step 8): deterministic templates from measured differences, e.g. *"Median slope 7.9° vs target 8.4° (within tolerance); relief 410 m vs 620 m (similarity 32, main mismatch); geology not available."*
 
 ### 4.2 Jobs
-- `POST /searches` validates, computes a cache key = hash(target profile version, Earth feature version, filters, scoring version) (§11). `retrieval_mode` accepts only `baseline` for now. Cache hit → return existing results. Miss → Celery job.
-- If target or region features are missing → enqueue a processing job and return `queued` (§6 principle).
-- Job states: `queued, running, completed, partially_completed, failed, cancelled`; cancellation via Celery revoke + status check between stages.
-- Idempotency: processing job key = input checksums + config version (§15).
+Hackathon (D-017): `POST /searches` validates and runs in the request. `retrieval_mode` accepts only `baseline`. It writes `search_jobs.status = completed` and returns the search id. The client calls `GET /searches/{id}/candidates` and does not poll. Missing features return HTTP 409 `features_not_ready`. Processing stays the CLI. The cache key is still hash(target profile version, Earth feature version, filters, scoring version), and a repeat of that key returns the stored result.
+
+Full design, later: a miss may return 202 and a Celery job with states `queued, running, completed, partially_completed, failed, cancelled`. Do not build that path in the hackathon.
+
+Idempotency of a processing run: input checksums + config version (§15).
 
 ### 4.3 API (§12)
 Implement all listed endpoints with Pydantic schemas; OpenAPI published. Add:
 - Pagination on `/searches/{id}/candidates`.
 - `GET /candidates/{id}/evidence` returns feature table, member windows, sources, versions, coverage, mismatches, unavailable evidence.
-- Auth: simple token/OIDC for review and processing endpoints; read endpoints public within the deployment.
+- Auth: shared demo token for review endpoints in the hackathon. OIDC is later. Read endpoints are public within the deployment.
 - Limits: max search area, max `top_k`, per-user concurrent jobs (§15).
 
 ### 4.4 Frontend
 Pages:
-1. **Search setup:** target picker (with planetary preview image), purpose, Earth search area (pre-defined pilot regions first; drawing later), mandatory/optional feature groups, top-k.
-2. **Job progress:** polling on `/searches/{id}`.
-3. **Results map:** MapLibre with candidate regions coloured by score, member windows on hover, documented analogs as a toggleable reference layer.
+1. **Search setup:** target picker (with planetary preview image), the two pilot regions, purpose `exposed_terrain`, top-k. Drawing a search area is later.
+2. **No progress page in the hackathon.** The search returns `completed` or 409.
+3. **Results map:** MapLibre with candidate regions coloured by score, member windows on hover, `reference_matches` as a layer that the Atacama demo turns on.
 4. **Comparison panel:** side-by-side target preview vs Earth hillshade, per-feature bars (Earth vs target vs tolerance), slope histogram overlay, mismatch & missing-evidence list, novelty status badge.
 5. **Sources panel:** provenance (asset IDs, resolutions, processing versions).
 6. **Export:** CSV + GeoJSON with full search configuration embedded.
@@ -407,7 +407,7 @@ Note: PostGIS geometry is Earth-oriented; store planetary geometries as WKT/GeoJ
 | `docs/DEMO.md` | The demo script, pre-demo checklist, fallback (screenshots / recorded video) if the network fails |
 | `docs/LIMITATIONS.md` | §17 non-goals and novelty policy in plain language; also shown in the app's About page |
 | `docs/data-audit.md` | Phase 1 audit results |
-| `docs/adr/NNN-*.md` | Short decision records (e.g. "why Copernicus not FABDEM as primary", "why no job queue in the hackathon") |
+| `docs/DECISIONS.md` | The only decision log (D-024). Do not also create `docs/adr/` |
 | `CONTRIBUTING.md` | Branching, commit style, how to run tests and linters, PR checklist |
 | `ATTRIBUTIONS.md` | Required credits: Copernicus DEM © DLR/Airbus, ESA WorldCover, USGS/NASA (SLDEM2015, MOLA), ESA/DLR/FU Berlin (HRSC, CC BY-SA 3.0 IGO), EOX Sentinel-2 cloudless, OpenFreeMap/OpenStreetMap, Macrostrat, FABDEM |
 | `CHANGELOG.md` | One line per meaningful change; helps the final presentation |
@@ -417,7 +417,7 @@ Note: PostGIS geometry is Earth-oriented; store planetary geometries as WKT/GeoJ
 | File | Contents |
 |---|---|
 | `CLAUDE.md` | Repo map, how to run/test, hard rules (never upsample DEMs, keep Earth/Moon/Mars CRSs separate, missing data is never a match, no secrets in frontend, no ML for now) |
-| `.claude/skills/design-taste-frontend/` | The open-source **taste-skill** (Leonxlnx/taste-skill), installed with `npx skills add` and pinned to a commit, so AI-written UI follows good layout, typography, colour and motion rules |
+| `.claude/skills/design-taste-frontend/` | tasteskill 2.5.1, already installed. Visual craft for the UI. The evidence panel and scientific-copy win when a landing-page rule conflicts (D-024) |
 | `.claude/skills/geo-pipeline/SKILL.md` | Project skill: how to add a data source or feature correctly (CRS per body, resolution matching, provenance rows, synthetic-DEM test required) |
 | `.claude/skills/run-app/SKILL.md` | Project skill: how to start the stack locally, seed fake data, and run the VM scripts |
 | `.claude/skills/scientific-copy/SKILL.md` | Project skill: wording rules for UI text and docs — "configured similarity", "not in checked records", never "discovered" or "probability" |
@@ -433,7 +433,7 @@ All VM scripts are idempotent (safe to re-run) and print what they do. Bash scri
 | `scripts/vm/create-vm.sh` | Laptop (Git Bash) | Enables APIs; creates the Cloud Storage bucket, service account (bucket access only), static IP, firewall rules (22 from your IP only, 80/443 public), and the e2-standard-4 VM with a 200 GB disk |
 | `scripts/vm/bootstrap.sh` | VM (first time) | Installs Docker + Compose, creates the deploy key and prints it for GitHub, clones the repo, generates `.env` with random DB password and demo token, sets up a nightly backup cron |
 | `scripts/vm/deploy.sh` | VM | `git pull` → build images → run Alembic migrations → `docker compose -f infra/docker-compose.prod.yml up -d` → health-check `/health`; rolls back to the previous image tag if the check fails |
-| `scripts/vm/process-region.sh <region> <target>` | Laptop | Resizes the VM to e2-standard-8, runs the pipeline for that region/target inside the worker container, syncs outputs to the bucket, resizes back to e2-standard-4 |
+| `scripts/vm/process-region.sh <region> <target>` | Laptop | Resizes the VM to e2-standard-8, runs `pipeline run` inside the backend image (for example `earth_sahara mars_jezero`), syncs outputs to the bucket, resizes back to e2-standard-4 |
 | `scripts/vm/backup-db.sh` | VM (cron) | `pg_dump` → gzip → Cloud Storage, keeps the last 7 |
 | `scripts/vm/restore-db.sh <backup>` | VM | Restores a chosen backup |
 | `scripts/vm/start.sh` / `stop.sh` | Laptop | Start / stop the VM (stop when idle to save credits) |
@@ -480,8 +480,8 @@ Full MVP (Phases 0–2) ≈ 8–9 weeks. The hackathon slice in §0.2 is designe
 
 ## 11. Open questions to resolve
 
-Defaults are already set above; these only change them.
+These do not block Phase 0.
 
 1. How long is the hackathon, and how many developers? (Sets which "Should" items in the hackathon MVP make it in.)
-2. Confirm non-commercial status (needed for FABDEM, EOX tiles and Earth Engine's free tier).
-3. Keep the default targets (Jezero, Taurus–Littrow) and pilot regions (Atacama/Altiplano, Western Sahara), or swap any?
+2. Confirm non-commercial status. Needed before using FABDEM, EOX tiles, or Earth Engine's free tier. The core DEMs do not depend on it.
+3. Extents are set in `config/grids/pilot-v1.yaml` and `config/targets/`. Swap them there to change a box. No answer is required before scaffolding.

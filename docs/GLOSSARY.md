@@ -27,3 +27,13 @@
 | **MOLA / HRSC** | Mars laser altimeter (Mars Global Surveyor) / stereo camera (Mars Express) |
 | **WorldCover** | ESA's 10 m global land-cover map, used for water/built-up/vegetation masks |
 | **sslip.io** | Free DNS service: `34-1-2-3.sslip.io` resolves to IP 34.1.2.3 — lets Caddy get HTTPS without buying a domain |
+| **Scored footprint** | The 10 km square whose terrain is actually compared. Wider preview images are not scored |
+| **Comparison grid** | 200 m pixels for Mars targets, 60 m pixels for Moon targets |
+| **Search index** | `features.parquet`. PostGIS holds the evidence rows, not the nearest-neighbour input |
+| **Reference list** | Documented analogs returned beside the candidates, sorted by score, excluded from the default candidate list |
+| **exposed_terrain** | The only hackathon purpose. Water and built-up can exclude a window; vegetation and snow/ice are flags |
+| **Scored footprint** | The 10 km square whose terrain is actually compared. Wider preview images are not scored |
+| **Comparison grid** | 200 m pixels for Mars targets, 60 m pixels for Moon targets |
+| **Search index** | `features.parquet`. PostGIS holds the evidence rows, not the nearest-neighbour input |
+| **Reference list** | Documented analogs returned beside the candidates, sorted by score, excluded from the default candidate list |
+| **exposed_terrain** | The only hackathon purpose. Water and built-up can exclude a window; vegetation and snow/ice are flags |

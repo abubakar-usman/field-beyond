@@ -19,9 +19,11 @@ description: Use when adding or changing a data source, raster preprocessing ste
 - Planetary geometries: never give them an Earth SRID. Store GeoJSON/WKT + `body` + `crs`.
 
 ## Resolution
-- Comparison scale: 200 m for Mars targets, 59 m for Moon targets.
-- Earth 30 m → aggregate down with area-weighted averaging (`Resampling.average`).
-- **Never upsample.** Every resampling call goes through a helper that asserts `target_res >= source_res`.
+- Comparison grids: 200 m for Mars targets, 60 m for Moon targets (`config/targets/`, `config/grids/pilot-v1.yaml`, decision D-023). SLDEM2015 is the ~59 m *product*; the Moon grid is 60 m so the latitude axis at Taurus–Littrow is not upsampled.
+- One Earth cell stores two profiles (`scale_m` 200 and 60). A search may use only the profile whose scale matches the target.
+- Aggregate with area-weighted averaging (`Resampling.average`) onto a grid in the region's LAEA. Pixel edges are multiples of the comparison pixel size from that projection's origin. The proj strings are in `config/grids/pilot-v1.yaml`.
+- **Never upsample.** Every resampling call goes through a helper that asserts both output pixel axes are coarser than or equal to the source ground pixel, in metres, on the correct body. This applies to Earth, Moon, and Mars rasters.
+- The scored target footprint is the 10 km square in `config/targets/`. The preview bbox is a hillshade and is not passed to feature extraction.
 
 ## Features
 - Live in `core/features/`, pure functions: `(dem: np.ndarray, pixel_size_m: float, mask: np.ndarray) -> value | None`.
@@ -34,4 +36,4 @@ description: Use when adding or changing a data source, raster preprocessing ste
 Every derived row stores: source asset IDs, git SHA, config hash, schema version. Every pipeline step writes a `processing_runs` row with status and error.
 
 ## Masks
-WorldCover gives water / built-up / snow-ice / vegetation shares. Store them as flags and fractions; whether they exclude a window is decided by the scoring config, not by the pipeline.
+Count WorldCover at native 10 m inside the window. Do not majority-filter it onto the DEM grid first. Class lists and which classes can exclude a window live in `config/scoring/terrain-v1.yaml`. The pipeline stores fractions; the scoring config decides eligibility. For `exposed_terrain`, water (class 80) and built-up (class 50) can exclude; snow/ice and vegetation are flags.

@@ -1,0 +1,19 @@
+# Scored footprint is 10 km, the same size as an Earth window.
+# The preview box is the crater and is not scored.
+id: mars_jezero
+body: mars
+name: Jezero crater
+comparison:
+  # Octavia E. Butler Landing. NASA NTRS 20210024480; Science Advances 2022 reports 18.4446°N, 77.4509°E.
+  center_lat: 18.4446
+  center_lon: 77.4509
+  footprint_m: 10000
+  scale_m: 200
+  # Build LAEA on the Mars sphere from core/bodies.py (IAU_2015:49900, R = 3,396,190 m).
+  # lat_0/lon_0 are the center above. Do not use a WGS84 datum.
+preview:
+  # Crater center 18.38°N, 77.58°E, diameter 45 km, plus a rim margin.
+  bbox: {west: 76.98, south: 17.83, east: 78.18, north: 18.93}
+  note: >
+    The hillshade shows the crater. The scored profile is the 10 km square at the
+    landing site, so its relief is comparable to a 10 km Earth window.

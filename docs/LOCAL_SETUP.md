@@ -1,6 +1,11 @@
-# Local setup (Windows laptop)
+# Local setup
 
-## Machine (checked 2026-11-14)
+The project laptop in the decisions is Windows. This checkout is also opened on Linux. Use the section that matches the machine in front of you.
+
+## Linux (bash)
+Install `uv`, Docker Engine with the Compose plugin, Node.js, and the Google Cloud CLI from their own docs (no winget, no WSL). Python for the project is still 3.12 via `uv`, whatever the system Python is. VM scripts in `scripts/vm/` run in bash. `scripts/local/*.ps1` is for the Windows laptop.
+
+## Windows laptop (checked 2026-11-14)
 Intel Core i7-8565U (4 cores / 8 threads) · 15.8 GB RAM · Windows 11 Pro · **64 GB free on C:** · Windows reports CPU virtualization as **disabled**.
 
 ## Tool status

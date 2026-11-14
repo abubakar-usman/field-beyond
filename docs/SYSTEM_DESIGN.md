@@ -239,7 +239,9 @@ Example search request:
 }
 ```
 
-Long-running requests return a job identifier. Jobs support queued, running, completed, partially completed, failed, and cancelled states. Review and processing endpoints require authorization.
+> The example ids above are the original design sketch. The hackathon uses `mars_jezero`, `moon_taurus_littrow`, `earth_atacama`, and `earth_sahara` (D-018). `POST /searches` runs inline and returns a completed search id (D-017). Copy the request in [docs/WALKTHROUGH.md](WALKTHROUGH.md), not this sketch.
+
+Long-running requests return a job identifier in the full design. The hackathon does not queue them. Jobs in that later design support queued, running, completed, partially completed, failed, and cancelled states. Review and processing endpoints require authorization.
 
 ## 13. End-to-End Application Working
 

@@ -24,7 +24,7 @@ description: Use when starting, testing, deploying or debugging the Earth Analog
 | Logs | `scripts/vm/logs.sh backend` |
 | Shell | `scripts/vm/ssh.sh` |
 | Deploy latest `main` | `scripts/vm/ssh.sh` then `/opt/eae/scripts/vm/deploy.sh` |
-| Process a region | `scripts/vm/process-region.sh western_sahara mars_jezero` |
+| Process a region | `scripts/vm/process-region.sh earth_sahara mars_jezero` |
 | Backup DB now | on VM: `/opt/eae/scripts/vm/backup-db.sh` |
 
 ## Rules
