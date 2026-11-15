@@ -34,15 +34,18 @@ import {
   type Evidence,
   type Region,
   type RegistryResponse,
+  type RescoreResponse,
   type Target,
 } from "@/lib/api";
 import { FEATURE_LABEL, NOVELTY_LABEL, SCORE_NOTE, fmtScore, fmtValue } from "@/lib/copy";
 import { coordinate, targetPoint, type Planet } from "@/lib/planets";
+import { TOP_K_CHOICES } from "@/lib/urlState";
 
 const ResultsMap = dynamic(() => import("@/components/ResultsMap"), { ssr: false });
 
-const DEFAULT_TOP_K = 20;
-const TOP_K_CHOICES = [10, 20, 50, 100];
+function pickCode(c: Candidate): string {
+  return `${c.list === "reference_matches" ? "r" : "c"}${c.rank}`;
+}
 const METRIC_ORDER = ["slope_hist", "slope_median", "slope_p90", "relief", "roughness"];
 
 export function errorText(e: unknown): string {
@@ -69,6 +72,10 @@ export default function Comparison({
   region,
   regions,
   onRegionChange,
+  topK,
+  onTopKChange,
+  pick,
+  onPick,
   registry,
   onBack,
 }: {
@@ -77,17 +84,23 @@ export default function Comparison({
   region: Region;
   regions: Region[];
   onRegionChange: (id: string) => void;
+  topK: number;
+  onTopKChange: (k: number) => void;
+  /** Selected result from the URL: "c<rank>" or "r<rank>". */
+  pick: string | null;
+  onPick: (pick: string) => void;
   registry: RegistryResponse | null;
   onBack: () => void;
 }) {
   const [attempt, setAttempt] = useState(0);
-  const [topK, setTopK] = useState(DEFAULT_TOP_K);
   const key = `${target.id}|${region.id}|${topK}|${attempt}`;
   // Results are keyed by request so a stale response never shows for another search.
   const [run, setRun] = useState<{ key: string; data?: CandidatesResponse; error?: string } | null>(
     null,
   );
-  const [picked, setPicked] = useState<{ key: string; id: string } | null>(null);
+  // Custom-weight rescore of the current search (null = terrain-v1 defaults).
+  const [rescored, setRescored] = useState<{ searchId: string; res: RescoreResponse } | null>(null);
+  const [reweightReset, setReweightReset] = useState(0);
   const [evidence, setEvidence] = useState<{ id: string; ev?: Evidence; error?: string } | null>(
     null,
   );
@@ -108,9 +121,36 @@ export default function Comparison({
   const current = run?.key === key ? run : null;
   const data = current?.data ?? null;
   const all: Candidate[] = data ? [...data.candidates, ...data.reference_matches] : [];
-  const selectedId =
-    (picked?.key === key ? picked.id : null) ?? data?.candidates[0]?.id ?? all[0]?.id ?? null;
+  const picked = pick ? all.find((c) => pickCode(c) === pick) : undefined;
+  const selectedId = picked?.id ?? data?.candidates[0]?.id ?? all[0]?.id ?? null;
   const selected = all.find((c) => c.id === selectedId) ?? null;
+  const choose = (c: Candidate) => onPick(pickCode(c));
+
+  // Re-weighted scores. A candidate's score is its best member window's score (SCORING.md),
+  // so the same rule is applied to the re-weighted windows. Groups are not re-merged.
+  const rescore = rescored && data && rescored.searchId === data.search.id ? rescored.res : null;
+  const reScore = new Map<string, { score: number; mismatch: string | null }>();
+  if (rescore) {
+    const byCell = new Map(rescore.windows.map((w) => [w.cell_id, w]));
+    for (const c of all) {
+      let best: (typeof rescore.windows)[number] | undefined;
+      for (const m of c.members) {
+        const w = byCell.get(m.cell_id);
+        if (w && (!best || w.score > best.score)) best = w;
+      }
+      if (best) reScore.set(c.id, { score: best.score, mismatch: best.main_mismatch });
+    }
+  }
+  const byNewScore = (a: Candidate, b: Candidate) =>
+    (reScore.get(b.id)?.score ?? -1) - (reScore.get(a.id)?.score ?? -1) || a.rank - b.rank;
+  const shownCandidates = data
+    ? rescore
+      ? [...data.candidates].sort(byNewScore)
+      : data.candidates
+    : [];
+  const mapCandidates = rescore
+    ? shownCandidates.map((c) => ({ ...c, score: reScore.get(c.id)?.score ?? c.score }))
+    : shownCandidates;
 
   useEffect(() => {
     if (!selectedId) return;
@@ -190,7 +230,7 @@ export default function Comparison({
           <span>CANDIDATES</span>
           <select
             value={topK}
-            onChange={(e) => setTopK(Number(e.target.value))}
+            onChange={(e) => onTopKChange(Number(e.target.value))}
             aria-label="Candidates to return"
           >
             {TOP_K_CHOICES.map((k) => (
@@ -217,8 +257,28 @@ export default function Comparison({
           </div>
           <div className="result-toolbar">
             <SlidersHorizontal size={15} />
-            <span>Ranked by configured similarity ({meta?.scoring_version ?? "terrain-v1"})</span>
+            <span>
+              {rescore
+                ? "Ranked by re-weighted similarity (custom weights)"
+                : `Ranked by configured similarity (${meta?.scoring_version ?? "terrain-v1"})`}
+            </span>
           </div>
+          {rescore && (
+            <div className="rescore-banner" role="note">
+              <strong>Custom weights applied to this list and the map.</strong> Only the stored
+              shortlist was re-scored; it was not rebuilt and groups were not re-merged. The metric
+              table and evidence below use the {meta?.scoring_version ?? "terrain-v1"} defaults.{" "}
+              <button
+                className="text-button"
+                onClick={() => {
+                  setRescored(null);
+                  setReweightReset((n) => n + 1);
+                }}
+              >
+                Back to defaults
+              </button>
+            </div>
+          )}
           {loading ? (
             <div className="empty-results">
               <div className="empty-icon">
@@ -247,12 +307,14 @@ export default function Comparison({
             </div>
           ) : (
             <div className="result-list" role="list">
-              {data!.candidates.map((c) => (
+              {shownCandidates.map((c, i) => (
                 <ResultRow
                   key={c.id}
                   c={c}
                   active={c.id === selectedId}
-                  onClick={() => setPicked({ key, id: c.id })}
+                  onClick={() => choose(c)}
+                  position={rescore ? i + 1 : undefined}
+                  re={rescore ? (reScore.get(c.id) ?? null) : undefined}
                 />
               ))}
               {data!.reference_matches.length > 0 && (
@@ -263,7 +325,7 @@ export default function Comparison({
                       key={c.id}
                       c={c}
                       active={c.id === selectedId}
-                      onClick={() => setPicked({ key, id: c.id })}
+                      onClick={() => choose(c)}
                     />
                   ))}
                 </>
@@ -316,11 +378,14 @@ export default function Comparison({
               </div>
               <ResultsMap
                 region={region}
-                candidates={data?.candidates ?? []}
+                candidates={mapCandidates}
                 references={data?.reference_matches ?? []}
                 registry={registry}
                 selectedId={selectedId}
-                onSelect={(id) => setPicked({ key, id })}
+                onSelect={(id) => {
+                  const c = all.find((x) => x.id === id);
+                  if (c) choose(c);
+                }}
               />
             </div>
           </div>
@@ -462,11 +527,12 @@ export default function Comparison({
 
           {data && meta && (
             <Reweight
-              key={data.search.id}
+              key={`${data.search.id}-${reweightReset}`}
               searchId={data.search.id}
               defaults={meta.weights}
               scoringVersion={meta.scoring_version}
               candidateCells={new Map(all.map((c) => [c.best_cell_id, c.rank]))}
+              onResult={(res) => setRescored(res ? { searchId: data.search.id, res } : null)}
             />
           )}
 
@@ -504,8 +570,25 @@ export default function Comparison({
   );
 }
 
-function ResultRow({ c, active, onClick }: { c: Candidate; active: boolean; onClick: () => void }) {
+function ResultRow({
+  c,
+  active,
+  onClick,
+  position,
+  re,
+}: {
+  c: Candidate;
+  active: boolean;
+  onClick: () => void;
+  /** Position in the re-weighted order; undefined when default weights apply. */
+  position?: number;
+  /** Re-weighted score and main mismatch; undefined when default weights apply. */
+  re?: { score: number; mismatch: string | null } | null;
+}) {
   const ref = c.list === "reference_matches";
+  const custom = position !== undefined;
+  const mismatch = custom ? (re?.mismatch ?? null) : c.main_mismatch;
+  const moved = custom ? c.rank - position : 0;
   return (
     <button
       className={`result-item ${active ? "active" : ""}`}
@@ -513,7 +596,7 @@ function ResultRow({ c, active, onClick }: { c: Candidate; active: boolean; onCl
       aria-current={active}
       onClick={onClick}
     >
-      <span className="result-rank">{String(c.rank).padStart(2, "0")}</span>
+      <span className="result-rank">{String(position ?? c.rank).padStart(2, "0")}</span>
       <span className="result-body">
         <strong>
           {ref
@@ -522,11 +605,23 @@ function ResultRow({ c, active, onClick }: { c: Candidate; active: boolean; onCl
         </strong>
         <small>
           {c.center.lat.toFixed(2)}°, {c.center.lon.toFixed(2)}° · main mismatch:{" "}
-          {FEATURE_LABEL[c.main_mismatch ?? ""]?.toLowerCase() ?? "none"} · {c.members.length}{" "}
-          window{c.members.length > 1 ? "s" : ""}
+          {FEATURE_LABEL[mismatch ?? ""]?.toLowerCase() ?? "none"} · {c.members.length} window
+          {c.members.length > 1 ? "s" : ""}
         </small>
+        {custom && (
+          <small className="rescore-diff">
+            {re ? `default ${fmtScore(c.score)} · was #${c.rank}` : "not in the stored shortlist"}
+            {re && moved !== 0 && (
+              <em className={moved > 0 ? "up" : "down"}>
+                {moved > 0 ? `▲${moved}` : `▼${-moved}`}
+              </em>
+            )}
+          </small>
+        )}
       </span>
-      <span className="result-score">{fmtScore(c.score)}</span>
+      <span className="result-score">
+        {custom ? (re ? fmtScore(re.score) : "—") : fmtScore(c.score)}
+      </span>
     </button>
   );
 }

@@ -431,6 +431,40 @@
   font-size: 9px;
 }
 
+/* re-weighted ranking in the candidate list */
+.rescore-banner {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border: 1px solid #6b5420;
+  background: #2a2210;
+  border-radius: 4px;
+  font-size: 9px;
+  line-height: 1.7;
+  color: #e7d3a8;
+}
+.rescore-banner strong {
+  font-weight: 600;
+  color: var(--synthetic-ink);
+}
+.rescore-banner .text-button {
+  font-size: 9px;
+  color: var(--accent);
+}
+.result-body .rescore-diff {
+  display: flex;
+  gap: 8px;
+  color: #a99a73;
+}
+.rescore-diff em {
+  font-style: normal;
+}
+.rescore-diff .up {
+  color: var(--accent);
+}
+.rescore-diff .down {
+  color: #e9aa91;
+}
+
 /* evidence details (charts, records checked, provenance, review) */
 .ev {
   padding: 6px 19px 19px;

@@ -3,7 +3,7 @@
 // Three screens: choose a body, pick a target on its globe, then compare with Earth.
 // Targets, regions, the registry and API health come from the FastAPI backend via /api.
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,6 +15,7 @@ import {
   Earth,
   Globe2,
   Layers3,
+  LoaderCircle,
   LocateFixed,
   MapPin,
   Maximize2,
@@ -42,17 +43,25 @@ import {
   type SurfacePoint,
 } from "@/lib/planets";
 import { api, type Health, type Region, type RegistryResponse, type Target } from "@/lib/api";
+import { parseView, viewToUrl, type Screen, type ViewState } from "@/lib/urlState";
 
-type Screen = "select" | "explore" | "compare";
 type Catalog = { targets: Target[]; regions: Region[]; registry: RegistryResponse | null };
 
 const STEPS = ["Choose a world", "Pick a target", "Compare with Earth"] as const;
 const PINNED_LIMIT = 12;
 
-export default function Explorer() {
-  const [screen, setScreen] = useState<Screen>("select");
-  const [planetId, setPlanetId] = useState<PlanetId>("moon");
-  const [point, setPoint] = useState<SurfacePoint | null>(null);
+function customPoint(v: ViewState): SurfacePoint | null {
+  return v.lat !== null && v.lon !== null ? { lat: v.lat, lon: v.lon } : null;
+}
+
+export default function Explorer({ initial }: { initial: ViewState }) {
+  const [screen, setScreen] = useState<Screen>(initial.screen);
+  const [planetId, setPlanetId] = useState<PlanetId>(initial.body);
+  // A chosen point, or a target id from the URL waiting for the catalog to load.
+  const [pointState, setPointState] = useState<SurfacePoint | null>(() => customPoint(initial));
+  const [pendingTarget, setPendingTarget] = useState<string | null>(initial.target);
+  const [topK, setTopK] = useState(initial.topK);
+  const [pick, setPick] = useState<string | null>(initial.pick);
   const [zoom, setZoom] = useState(0);
   const [reset, setReset] = useState(0);
   const [grid, setGrid] = useState(false);
@@ -61,7 +70,7 @@ export default function Explorer() {
   const [manual, setManual] = useState(false);
   const [coordError, setCoordError] = useState("");
   const [query, setQuery] = useState("");
-  const [regionChoice, setRegionChoice] = useState<string | null>(null);
+  const [regionChoice, setRegionChoice] = useState<string | null>(initial.region);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
@@ -123,6 +132,55 @@ export default function Explorer() {
     () => (catalog?.targets ?? []).filter((t) => t.body === planetId),
     [catalog, planetId],
   );
+  const pendingMatch = pendingTarget ? bodyTargets.find((t) => t.id === pendingTarget) : null;
+  const point: SurfacePoint | null =
+    pointState ?? (pendingMatch ? targetPoint(pendingMatch) : null);
+
+  function setPoint(p: SurfacePoint | null) {
+    setPointState(p);
+    setPendingTarget(null);
+    setPick(null);
+  }
+
+  // Keep the URL in step with the view. A new screen adds a history entry (Back works);
+  // other changes replace the current one.
+  const view: ViewState = {
+    screen,
+    body: planetId,
+    target: point?.targetId ?? (pointState ? null : pendingTarget),
+    lat: point && !point.targetId ? point.lat : null,
+    lon: point && !point.targetId ? point.lon : null,
+    region: regionChoice,
+    topK,
+    pick,
+  };
+  const url = viewToUrl(view);
+  const lastScreen = useRef(screen);
+  useEffect(() => {
+    const here = window.location.pathname + window.location.search;
+    if (url !== here) {
+      if (lastScreen.current !== screen) window.history.pushState(null, "", url);
+      else window.history.replaceState(null, "", url);
+    }
+    lastScreen.current = screen;
+  }, [url, screen]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const v = parseView(Object.fromEntries(new URLSearchParams(window.location.search)));
+      lastScreen.current = v.screen;
+      setScreen(v.screen);
+      setPlanetId(v.body);
+      setPointState(customPoint(v));
+      setPendingTarget(v.target);
+      setRegionChoice(v.region);
+      setTopK(v.topK);
+      setPick(v.pick);
+      setFull(false);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   // Without a query: prepared sites and any target that has a profile. With one: IAU names too.
   const listed = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -691,7 +749,10 @@ export default function Explorer() {
                   className="region-select"
                   aria-label="Earth search region"
                   value={region?.id ?? ""}
-                  onChange={(e) => setRegionChoice(e.target.value)}
+                  onChange={(e) => {
+                    setRegionChoice(e.target.value);
+                    setPick(null);
+                  }}
                   disabled={!regions.length}
                 >
                   {regions.map((r) => (
@@ -729,19 +790,54 @@ export default function Explorer() {
           </footer>
         </main>
       ) : (
-        point &&
-        target &&
-        region && (
-          <Comparison
-            planet={planet}
-            target={target}
-            region={region}
-            regions={regions}
-            onRegionChange={setRegionChoice}
-            registry={catalog?.registry ?? null}
-            onBack={() => setScreen("explore")}
-          />
-        )
+        <>
+          {target && region && target.profile_status === "ready" ? (
+            <Comparison
+              planet={planet}
+              target={target}
+              region={region}
+              regions={regions}
+              onRegionChange={(id) => {
+                setRegionChoice(id);
+                setPick(null);
+              }}
+              topK={topK}
+              onTopKChange={(k) => {
+                setTopK(k);
+                setPick(null);
+              }}
+              pick={pick}
+              onPick={setPick}
+              registry={catalog?.registry ?? null}
+              onBack={() => setScreen("explore")}
+            />
+          ) : (
+            // Opened from a link before the catalog loaded, or for a target that cannot be scored.
+            <main className="comparison-page">
+              <div className="empty-results" role={catalogError ? "alert" : "status"}>
+                <div className="empty-icon">
+                  {catalog || catalogError ? (
+                    <TriangleAlert size={28} />
+                  ) : (
+                    <LoaderCircle className="spin" size={28} />
+                  )}
+                </div>
+                <h3>
+                  {catalogError
+                    ? "The API is not reachable."
+                    : !catalog
+                      ? "Loading the search…"
+                      : "This link does not point to a target that can be scored."}
+                </h3>
+                {(catalog || catalogError) && (
+                  <button className="secondary retry" onClick={() => setScreen("explore")}>
+                    <ArrowLeft size={13} /> Back to exploration
+                  </button>
+                )}
+              </div>
+            </main>
+          )}
+        </>
       )}
 
       {help && (

@@ -14,24 +14,32 @@ export default function Reweight({
   defaults,
   scoringVersion,
   candidateCells,
+  onResult,
 }: {
   searchId: string;
   defaults: Record<string, number>;
   scoringVersion: string;
   /** Best window id → candidate rank, to show where re-weighted windows sit today. */
   candidateCells: Map<number, number>;
+  /** Re-weighted windows for the candidate list and map; null returns to the defaults. */
+  onResult: (res: RescoreResponse | null) => void;
 }) {
   const [weights, setWeights] = useState<Record<string, number>>(defaults);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<RescoreResponse | null>(null);
+  const [result, setResultState] = useState<RescoreResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const changed = Object.keys(defaults).some((k) => weights[k] !== defaults[k]);
+  const setResult = (res: RescoreResponse | null) => {
+    setResultState(res);
+    onResult(res);
+  };
 
   async function run() {
     setBusy(true);
     setError(null);
     try {
-      setResult(await api.rescore(searchId, weights));
+      // Default weights need no rescore: show the stored ranking.
+      setResult(changed ? await api.rescore(searchId, weights) : null);
     } catch (e) {
       setResult(null);
       setError(e instanceof ApiError ? `${e.code} (HTTP ${e.status})` : String(e));
