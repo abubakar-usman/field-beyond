@@ -19,7 +19,8 @@ from core.provenance import sha256_file
 GDAL_ENV: dict[str, str | int] = {
     "AWS_NO_SIGN_REQUEST": "YES",
     "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
-    "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".tif,.tiff,.TIF",
+    # .LBL/.IMG: SLDEM2015 tiles on NASA PGDA are raw PDS images with a detached label.
+    "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".tif,.tiff,.TIF,.LBL,.IMG,.lbl,.img",
     "GDAL_HTTP_MAX_RETRY": "5",
     "GDAL_HTTP_RETRY_DELAY": "2",
     "VSI_CACHE": "TRUE",
@@ -41,6 +42,7 @@ class AssetRef:
     footprint: dict[str, float] | None = None  # lon/lat bbox (Earth) or body lon/lat bbox
     sha256: str | None = None
     access_meta: dict[str, Any] = field(default_factory=dict)
+    height_unit_m: float = 1.0  # metres per stored height unit
 
     @property
     def asset_id(self) -> str:

@@ -232,6 +232,8 @@ class Product(_Strict):
     collection: str | None = None
     tile_template: str | None = None
     tile_size_deg: int | None = None
+    # Metres per stored height unit: 1 for metres, 1000 for products stored in km (SLDEM2015 FLOAT).
+    height_unit_m: float = 1.0
     notes: str = ""
 
 

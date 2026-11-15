@@ -3,6 +3,7 @@
 One line per meaningful change, newest first.
 
 ## 2026-11-15
+- First real data: the `mars_jezero` profile and preview now come from the NASA MOLA–HRSC blend, and `moon_taurus_littrow` from NASA SLDEM2015 (`pipeline target`). The USGS SLDEM2015 mosaic URL returned 404, so `products-v1.yaml` now reads the NASA PGDA tile that covers Taurus–Littrow (FLOAT tiles store km; new `height_unit_m` converts to metres). Earth features are still synthetic.
 - The explorer's view is now in the URL (screen, body, target or custom point, region, top-k, selected result), so a refresh, a shared link and the browser's Back/Forward buttons keep the state. `/` is now rendered per request to read the query.
 - Rescoring with custom weights now re-orders the candidate list and recolours the Earth map. A candidate's re-weighted score is its best member window's score, as in SCORING.md; the list shows the default score and old rank beside it. The metric table and evidence stay on the terrain-v1 defaults, and the UI says so.
 - End-to-end check of the new frontend against the API (Moon and Mars, both regions, top-k, rescore, run records, exports, reviews). Fixed: the metric table hid tolerance and similarity on phones (they now wrap); the review form now says how to enable reviews when the API has no `DEMO_TOKEN`.

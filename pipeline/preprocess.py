@@ -237,4 +237,8 @@ def warp_planetary(
             src_crs = crs
         arr = warp_to_grid(src, body=body, grid=grid, src_crs=src_crs, lat_range=lat_range)
         info["product_res"] = (abs(src.transform.a), abs(src.transform.e))
+    if asset.height_unit_m != 1.0:
+        # Heights must be metres before slope and relief; horizontal spacing is metres.
+        arr = arr * np.float32(asset.height_unit_m)
+        info["height_unit_m"] = asset.height_unit_m
     return arr, grid, info

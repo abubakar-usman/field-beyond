@@ -143,5 +143,6 @@ def planetary_asset(body: str) -> AssetRef:
         url=check_url(p.url),
         resolution_m=p.resolution_m,
         source_version=p.version,
-        access_meta={"access": "http_range_requests"},
+        access_meta={"access": "http_range_requests", "height_unit_m": p.height_unit_m},
+        height_unit_m=p.height_unit_m,
     )
