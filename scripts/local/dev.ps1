@@ -1,9 +1,11 @@
 # Start the app locally on Windows.
 #   powershell -ExecutionPolicy Bypass -File scripts\local\dev.ps1            # Docker (same as scripts\docker\up.ps1)
 #   powershell -ExecutionPolicy Bypass -File scripts\local\dev.ps1 -NoDocker  # no Docker: uv + npm dev servers, in-memory store
+#   powershell -ExecutionPolicy Bypass -File scripts\local\dev.ps1 -NoDocker -Moon  # also seed Moon-scale data
 # Both modes seed SYNTHETIC features first if none exist (pipeline seed-fake).
 param(
     [switch]$NoDocker,
+    [switch]$Moon,
     [switch]$Reseed
 )
 $ErrorActionPreference = 'Continue'
@@ -13,6 +15,7 @@ Set-Location $Root
 if (-not $NoDocker) {
     $fwd = @{}
     if ($Reseed) { $fwd['Reseed'] = $true }
+    if ($Moon) { $fwd['Moon'] = $true }
     & (Join-Path $Root 'scripts\docker\up.ps1') @fwd
     exit $LASTEXITCODE
 }
@@ -48,8 +51,13 @@ Write-Host '==> Python dependencies (uv sync)'
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 if ($Reseed -or -not (Test-Path 'data/processed/regions')) {
-    Write-Host '==> seeding SYNTHETIC features at 200 m (Mars target). Add 60 m with: uv run pipeline seed-fake --scale 60'
+    Write-Host '==> seeding SYNTHETIC features at 200 m (Mars target)'
     & $uv run pipeline seed-fake --scale 200
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+if ($Moon -and ($Reseed -or -not (Test-Path 'data/processed/regions/earth_sahara/current-60m.json'))) {
+    Write-Host '==> seeding SYNTHETIC features at 60 m (Moon target)'
+    & $uv run pipeline seed-fake --scale 60
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

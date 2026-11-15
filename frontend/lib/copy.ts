@@ -28,6 +28,12 @@ export const NOVELTY_LABEL: Record<NoveltyStatus, string> = {
   rejected: "Reviewed: rejected",
 };
 
+export function noveltyLabel(status: NoveltyStatus, registryLoaded: boolean): string {
+  return !registryLoaded && status === "not_in_checked_records"
+    ? "Registry not loaded"
+    : NOVELTY_LABEL[status];
+}
+
 export const FLAG_LABEL: Record<string, string> = {
   valid_fraction: "Valid DEM pixels",
   water_fraction: "Water (WorldCover)",

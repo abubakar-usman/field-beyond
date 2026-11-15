@@ -37,7 +37,13 @@ import {
   type RescoreResponse,
   type Target,
 } from "@/lib/api";
-import { FEATURE_LABEL, NOVELTY_LABEL, SCORE_NOTE, fmtScore, fmtValue } from "@/lib/copy";
+import {
+  FEATURE_LABEL,
+  SCORE_NOTE,
+  fmtScore,
+  fmtValue,
+  noveltyLabel,
+} from "@/lib/copy";
 import { coordinate, targetPoint, type Planet } from "@/lib/planets";
 import { TOP_K_CHOICES } from "@/lib/urlState";
 
@@ -409,7 +415,7 @@ export default function Comparison({
                 <span>CONFIGURED SIMILARITY ({meta?.scoring_version ?? "terrain-v1"})</span>
                 <p>
                   {selected
-                    ? `${NOVELTY_LABEL[selected.novelty_status]} · ${selected.members.length} window${selected.members.length > 1 ? "s" : ""} · centre ${selected.center.lat.toFixed(3)}°, ${selected.center.lon.toFixed(3)}°`
+                    ? `${noveltyLabel(selected.novelty_status, selected.novelty.registry_loaded)} · ${selected.members.length} window${selected.members.length > 1 ? "s" : ""} · centre ${selected.center.lat.toFixed(3)}°, ${selected.center.lon.toFixed(3)}°`
                     : "Not a probability. Select a candidate."}
                 </p>
               </div>
@@ -601,7 +607,7 @@ function ResultRow({
         <strong>
           {ref
             ? (c.novelty.matched[0]?.name ?? "Documented analog")
-            : NOVELTY_LABEL[c.novelty_status]}
+            : noveltyLabel(c.novelty_status, c.novelty.registry_loaded)}
         </strong>
         <small>
           {c.center.lat.toFixed(2)}°, {c.center.lon.toFixed(2)}° · main mismatch:{" "}

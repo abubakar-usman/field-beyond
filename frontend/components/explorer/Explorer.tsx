@@ -206,11 +206,12 @@ export default function Explorer({ initial }: { initial: ViewState }) {
     : null;
   const nearest = point && !point.targetId ? nearestTarget(point, bodyTargets, planet) : null;
   const regions = useMemo(() => catalog?.regions ?? [], [catalog]);
-  // Default region: the first with features at the target's scale.
+  // Keep the selected region only when it has features at the target's scale.
+  // This matters when switching from Mars (200 m) to Moon (60 m).
   const region = useMemo(() => {
-    const chosen = regions.find((r) => r.id === regionChoice);
-    if (chosen) return chosen;
     const scale = String(target?.comparison.scale_m ?? "");
+    const chosen = regions.find((r) => r.id === regionChoice);
+    if (chosen?.scales[scale]?.status === "ready") return chosen;
     return regions.find((r) => r.scales[scale]?.status === "ready") ?? regions[0] ?? null;
   }, [regions, regionChoice, target]);
   const scaleStatus = target && region ? region.scales[String(target.comparison.scale_m)] : null;
@@ -229,6 +230,7 @@ export default function Explorer({ initial }: { initial: ViewState }) {
   function explore(id: PlanetId) {
     setPlanetId(id);
     setPoint(null);
+    setRegionChoice(null);
     setZoom(0);
     setGrid(false);
     setQuery("");

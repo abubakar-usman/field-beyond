@@ -7,7 +7,7 @@
 import { FeatureStrip, SlopeHistogram } from "./Charts";
 import ReviewBox from "./ReviewBox";
 import type { Evidence } from "@/lib/api";
-import { FLAG_LABEL, NOVELTY_LABEL, fmtPct, fmtScore } from "@/lib/copy";
+import { FLAG_LABEL, fmtPct, fmtScore, noveltyLabel } from "@/lib/copy";
 
 const SCALAR_ORDER = ["slope_median", "slope_p90", "relief", "roughness"];
 
@@ -74,7 +74,7 @@ export default function EvidenceDetails({ ev, onReload }: { ev: Evidence; onRelo
       </div>
 
       <div className="section">
-        <h3>Records checked · {NOVELTY_LABEL[nov.status]}</h3>
+        <h3>Records checked · {noveltyLabel(nov.status, nov.registry_loaded)}</h3>
         {nov.registry_loaded ? (
           <>
             <p>
