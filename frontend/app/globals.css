@@ -289,6 +289,10 @@ input:focus-visible,
   color: var(--text-secondary);
   white-space: nowrap;
 }
+.badge.iau {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
 .badge.synthetic {
   background: var(--synthetic-bg);
   color: var(--synthetic-ink);

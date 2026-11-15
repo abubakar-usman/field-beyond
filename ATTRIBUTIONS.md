@@ -9,6 +9,7 @@ This app uses the following data. These credits must stay visible in the app (Ab
 | SLDEM2015 (Moon) | NASA / LRO LOLA team and JAXA / SELENE (Kaguya) Terrain Camera; USGS Astrogeology. Public domain. Barker, M.K. et al. (2016), Icarus 273, 346–355 |
 | MOLA–HRSC Blended DEM v2 (Mars) | NASA / MGS MOLA (CC0) and ESA / DLR / FU Berlin Mars Express HRSC (CC BY-SA 3.0 IGO); Fergason, Hare & Laura (2018), USGS Astrogeology. Derived Mars elevation products are shared under CC BY-SA 3.0 IGO |
 | Known Terrestrial Analog Sites for Planetary Science | U.S. Geological Survey. Public domain |
+| Gazetteer of Planetary Nomenclature | IAU-adopted feature names, compiled by the USGS Astrogeology Science Center. Public domain. https://planetarynames.wr.usgs.gov/ |
 | NASA Planetary Analog Explorer | NASA |
 | Base map | © OpenStreetMap contributors (ODbL), tiles by OpenFreeMap, OpenMapTiles |
 | Satellite layer | Sentinel-2 cloudless by EOX IT Services GmbH (Contains modified Copernicus Sentinel data, year as shown). Non-commercial use |

@@ -40,6 +40,14 @@ Approved hosts are listed in [`config/sources.yaml`](../config/sources.yaml). Ta
 - **Gotcha:** in areas without HRSC coverage it's MOLA-interpolated (smoother). Check Jezero has HRSC coverage during the audit.
 - https://astrogeology.usgs.gov/search/map/mars_mgs_mola_mex_hrsc_blended_dem_global_200m
 
+### USGS Gazetteer of Planetary Nomenclature (target names)
+- **What:** IAU-adopted Moon and Mars feature names, with center coordinates and diameter. These are places that can become targets. They are not elevation, and a name is not a scored profile until `pipeline target` runs.
+- **Where:** center-point shapefile zips on `asc-planetarynames-data.s3.us-west-2.amazonaws.com`, linked from https://planetarynames.wr.usgs.gov/GIS_Downloads. The HTML index is not fetched; the pipeline downloads the S3 URLs in `config/gazetteer-v1.yaml`.
+- **Filter:** adopted names whose descriptor is Crater, Vallis, Chaos, Chasma, Cavus or Rima, diameter 10–60 km, and (Moon only) latitude within ±60° so SLDEM2015 can cover them. The scored footprint stays the 10 km square at the center.
+- **Access:** HTTPS, no login. `uv run pipeline import-gazetteer` writes `data/processed/gazetteer/catalog.json` (gitignored).
+- **License:** public domain (USGS). Cite the Gazetteer of Planetary Nomenclature.
+- Checked 2026-11-15: both center-point zips returned HTTP 200.
+
 ### USGS Known Terrestrial Analog Sites for Planetary Science (registry seed)
 - **What:** US Government dataset of documented analog sites (metadata updated Oct 2025).
 - **Where:** https://catalog.data.gov/dataset/known-terrestrial-analog-sites-for-planetary-science and https://www.usgs.gov/data/known-terrestrial-analog-sites-planetary-science
@@ -67,4 +75,4 @@ Approved hosts are listed in [`config/sources.yaml`](../config/sources.yaml). Ta
 - **NASA POWER air temperature as surface temperature** — physically wrong (design §5).
 
 ## Approved hosts (for `config/sources.yaml` SSRF allowlist)
-`copernicus-dem-30m.s3.eu-central-1.amazonaws.com`, `copernicus-dem-30m.s3.amazonaws.com`, `esa-worldcover.s3.eu-central-1.amazonaws.com`, `esa-worldcover.s3.amazonaws.com`, `earth-search.aws.element84.com`, `planetarycomputer.microsoft.com`, `*.blob.core.windows.net` (Planetary Computer assets), `planetarymaps.usgs.gov`, `astrogeology.usgs.gov`, `pgda.gsfc.nasa.gov`, `imbrium.mit.edu`, `pds-geosciences.wustl.edu`, `macrostrat.org`.
+`copernicus-dem-30m.s3.eu-central-1.amazonaws.com`, `copernicus-dem-30m.s3.amazonaws.com`, `esa-worldcover.s3.eu-central-1.amazonaws.com`, `esa-worldcover.s3.amazonaws.com`, `earth-search.aws.element84.com`, `planetarycomputer.microsoft.com`, `*.blob.core.windows.net` (Planetary Computer assets), `planetarymaps.usgs.gov`, `astrogeology.usgs.gov`, `pgda.gsfc.nasa.gov`, `imbrium.mit.edu`, `pds-geosciences.wustl.edu`, `macrostrat.org`, `asc-planetarynames-data.s3.us-west-2.amazonaws.com`.

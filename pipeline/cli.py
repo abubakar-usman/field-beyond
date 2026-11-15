@@ -11,6 +11,7 @@ import typer
 from backend.settings import get_settings
 from core.artifacts import Artifacts
 from core.config import (
+    load_gazetteer,
     load_grid,
     load_scoring,
     load_sources,
@@ -37,6 +38,7 @@ def check_config(scoring: ScoringOpt = "terrain-v1", grid: GridOpt = "pilot-v1")
     g = load_grid(grid)
     t = load_targets()
     load_sources()
+    load_gazetteer()
     typer.echo(
         f"scoring {s.version} ({s.feature_schema_version}), grid {g.version}, targets {sorted(t)}"
     )
@@ -89,7 +91,7 @@ def run(
 
     a, s, g = _artifacts(), load_scoring(scoring), load_grid(grid)
     if target:
-        t = load_target(target)
+        t = _resolve(a, target)
         sc = t.comparison.scale_m
         run_target(a, g, s, t, progress=typer.echo)
     elif scale:
@@ -98,6 +100,35 @@ def run(
         raise typer.BadParameter("give --target or --scale")
     out = run_region(a, g, s, region, sc, use_stac=not no_stac, progress=typer.echo)
     typer.echo(json.dumps(out))
+
+
+@app.command("import-gazetteer")
+def import_gazetteer_cmd(
+    scoring: ScoringOpt = "terrain-v1",
+    grid: GridOpt = "pilot-v1",
+) -> None:
+    """Download IAU Moon and Mars names and write the target catalog."""
+    from pipeline.gazetteer import import_gazetteer
+
+    catalog = import_gazetteer(
+        _artifacts(),
+        load_scoring(scoring),
+        load_grid(grid),
+        progress=typer.echo,
+    )
+    typer.echo(f"{len(catalog['targets'])} names in {catalog['version']}")
+
+
+def _resolve(artifacts: Artifacts, target_id: str):
+    from core.gazetteer import feature_to_target, find_feature
+
+    try:
+        return load_target(target_id)
+    except KeyError:
+        row = find_feature(artifacts.read_gazetteer_catalog(), target_id)
+        if row is None:
+            raise
+        return feature_to_target(row)
 
 
 @app.command("target")
@@ -113,7 +144,7 @@ def target_cmd(
         _artifacts(),
         load_grid(grid),
         load_scoring(scoring),
-        load_target(target),
+        _resolve(_artifacts(), target),
         progress=typer.echo,
     )
     typer.echo(json.dumps(out, default=str))
@@ -208,7 +239,7 @@ def benchmark_cmd(
     from backend.eval.benchmark import benchmark, report_markdown
 
     a, s, g = _artifacts(), load_scoring(scoring), load_grid(grid)
-    tcfg = load_target(target)
+    tcfg = _resolve(a, target)
     tprof = a.read_target_profile(target, tcfg.comparison.scale_m)
     df, _ = a.read_features(region, tcfg.comparison.scale_m)
     b = benchmark(df, tprof, tcfg, a.read_registry(), s, g, region, top_k)

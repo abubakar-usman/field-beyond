@@ -22,7 +22,7 @@ from backend.search.filter import eligibility
 from backend.search.novelty import NoveltyChecker
 from backend.search.retrieve import IndexStats, shortlist
 from core.artifacts import RegistrySnapshot, RunRecord, TargetProfileRecord, utcnow
-from core.config import GridConfig, ScoringConfig, load_target
+from core.config import GridConfig, ScoringConfig, TargetConfig, load_target
 from core.grid import window_center_lonlat, window_from_cell_id, window_lonlat_polygon
 from core.provenance import stable_json_hash
 from core.scoring import WindowScore, absolute_tolerances, missing_mandatory, score_window
@@ -113,6 +113,7 @@ def run_search(
     registry: RegistrySnapshot,
     scoring: ScoringConfig,
     grid: GridConfig,
+    target_config: TargetConfig | None = None,
 ) -> dict[str, Any]:
     """Return a JSON-serialisable result: meta, candidates, reference_matches, shortlist."""
     if params.scoring_version != scoring.version:
@@ -143,7 +144,7 @@ def run_search(
         raise SearchRefused("bad_weights", {"expected_keys": scoring.mandatory_features})
     tolerances = absolute_tolerances(target.values, scoring)
     region = grid.region(params.region_id)
-    tcfg = load_target(params.target_id)
+    tcfg = target_config or load_target(params.target_id)
 
     df = features.loc[features["region_id"] == params.region_id].copy()
     reasons = eligibility(df, scoring)

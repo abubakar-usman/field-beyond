@@ -14,6 +14,7 @@ hosts:
   - imbrium.mit.edu
   - pds-geosciences.wustl.edu
   - macrostrat.org
+  - asc-planetarynames-data.s3.us-west-2.amazonaws.com
 suffixes:
   # Planetary Computer signs asset URLs onto Azure blob storage.
   - .blob.core.windows.net

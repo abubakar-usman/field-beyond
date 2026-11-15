@@ -319,6 +319,37 @@ def run_config_hash(scoring_version: str = "terrain-v1", grid_version: str = "pi
     return config_hash(paths)
 
 
+class GazetteerFile(_Strict):
+    body: BodyName
+    url: str
+    scale_m: int
+    lat_min: float
+    lat_max: float
+
+
+class GazetteerConfig(_Strict):
+    version: str
+    footprint_m: int
+    diameter_km_min: float
+    diameter_km_max: float
+    feature_types: list[str]
+    bodies: list[GazetteerFile]
+
+
+def gazetteer_path(version: str = "gazetteer-v1") -> Path:
+    return config_dir() / f"{version}.yaml"
+
+
+@lru_cache(maxsize=2)
+def load_gazetteer(version: str = "gazetteer-v1") -> GazetteerConfig:
+    cfg = GazetteerConfig.model_validate(_read_yaml(gazetteer_path(version)))
+    if cfg.version != version:
+        raise ValueError(f"{gazetteer_path(version)} declares version {cfg.version!r}")
+    if cfg.diameter_km_min <= 0 or cfg.diameter_km_max < cfg.diameter_km_min:
+        raise ValueError("gazetteer diameter bounds must be positive and ordered")
+    return cfg
+
+
 def clear_caches() -> None:
-    for fn in (load_scoring, load_grid, load_targets, load_sources, load_products):
+    for fn in (load_scoring, load_grid, load_targets, load_sources, load_products, load_gazetteer):
         fn.cache_clear()

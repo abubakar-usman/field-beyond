@@ -4,6 +4,7 @@ import pytest
 from core.allowlist import DisallowedURL, check_url, is_allowed
 from core.bodies import EARTH, MARS, MOON
 from core.config import (
+    load_gazetteer,
     load_grid,
     load_products,
     load_scoring,
@@ -50,6 +51,15 @@ def test_target_scales_match_d023():
     assert t["moon_taurus_littrow"].comparison.scale_m == 60
     for target in t.values():
         assert target.comparison.footprint_m == load_grid().window_m
+
+
+def test_gazetteer_urls_are_allowlisted():
+    cfg = load_gazetteer()
+    assert cfg.diameter_km_min == 10
+    assert cfg.diameter_km_max == 60
+    assert {b.body.value for b in cfg.bodies} == {"mars", "moon"}
+    for body in cfg.bodies:
+        assert is_allowed(body.url), body.body
 
 
 def test_product_hosts_are_allowlisted():

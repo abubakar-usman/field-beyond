@@ -23,6 +23,10 @@ const CREDITS: [string, string][] = [
     "Known Terrestrial Analog Sites for Planetary Science",
     "U.S. Geological Survey. Public domain.",
   ],
+  [
+    "Gazetteer of Planetary Nomenclature",
+    "IAU-adopted names compiled by the USGS Astrogeology Science Center. Public domain. A listed name is a place that can be profiled; the scored footprint is the 10 km square at its center.",
+  ],
   ["Base map", "© OpenStreetMap contributors (ODbL), tiles by OpenFreeMap, OpenMapTiles."],
   [
     "Satellite layer (if enabled)",

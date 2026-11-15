@@ -9,6 +9,7 @@
       targets/<target_id>/profile-<scale>m.json        target feature profile
       targets/<target_id>/preview.png                  hillshade of the preview bbox
       registry/registry.geojson                        known-analog registry snapshot
+      gazetteer/catalog.json                           IAU names that can become targets
 
 The parquet SHA-256 lives on the run record, not in the file. Reading a region
 re-hashes the file and refuses a mismatch.
@@ -180,6 +181,21 @@ class Artifacts:
 
     def registry_path(self) -> Path:
         return self.root / "registry" / "registry.geojson"
+
+    def write_gazetteer_catalog(self, catalog: dict[str, Any]) -> None:
+        _write_json(self.gazetteer_catalog_path(), catalog)
+
+    def read_gazetteer_catalog(self) -> dict[str, Any] | None:
+        path = self.gazetteer_catalog_path()
+        if not path.exists():
+            return None
+        return _read_json(path)
+
+    def gazetteer_catalog_path(self) -> Path:
+        return self.root / "gazetteer" / "catalog.json"
+
+    def gazetteer_raw_path(self, body: str) -> Path:
+        return self.root / "gazetteer" / f"{body}_nomenclature_center_pts.zip"
 
     # runs
     def write_run(self, run: RunRecord) -> None:

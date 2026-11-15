@@ -42,6 +42,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CandidatesResponse | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [targetQuery, setTargetQuery] = useState("");
 
   useEffect(() => {
     Promise.all([api.targets(), api.regions(), api.registry()])
@@ -54,6 +55,17 @@ export default function Home() {
   }, []);
 
   const target = targets.find((t) => t.id === targetId) ?? null;
+  const gazetteerLoaded = targets.some((t) => t.origin === "iau_gazetteer");
+  const shownTargets = useMemo(() => {
+    const q = targetQuery.trim().toLowerCase();
+    const matches = q
+      ? targets
+          .filter((t) => [t.name, t.id, t.feature_type ?? ""].join(" ").toLowerCase().includes(q))
+          .slice(0, 40)
+      : targets.filter((t) => t.origin !== "iau_gazetteer" || t.profile_status === "ready");
+    if (target && !matches.some((t) => t.id === target.id)) return [target, ...matches];
+    return matches;
+  }, [targets, targetQuery, target]);
   const region = regions.find((r) => r.id === regionId) ?? null;
   const scaleStatus =
     target && region ? region.scales[String(target.comparison.scale_m)] : undefined;
@@ -93,8 +105,23 @@ export default function Home() {
       <aside className="sidebar">
         <div className="section">
           <h3>1 · Target</h3>
+          <div className="field">
+            <label htmlFor="target-query">Find an IAU name</label>
+            <input
+              id="target-query"
+              type="search"
+              value={targetQuery}
+              placeholder="Jezero, Vallis, Chaos…"
+              onChange={(e) => setTargetQuery(e.target.value)}
+            />
+          </div>
+          <p className="muted" style={{ margin: 0, fontSize: 12 }}>
+            {gazetteerLoaded
+              ? "An empty search shows the prepared sites. A gazetteer name needs a profile (`pipeline target`) before it can be scored. The scored footprint is the 10 km square at the name’s center."
+              : "Only the prepared sites are loaded. `pipeline import-gazetteer` adds IAU Moon and Mars names."}
+          </p>
           <div className="targets" role="group" aria-label="Planetary target">
-            {targets.map((t) => {
+            {shownTargets.map((t) => {
               const src = previewUrl(t.preview_url);
               return (
                 <button
@@ -113,7 +140,9 @@ export default function Home() {
                     <span>
                       {BODY_LABEL[t.body]} · {t.comparison.scale_m} m ·{" "}
                       {t.comparison.footprint_m / 1000} km
+                      {t.diameter_km != null ? ` · ${t.diameter_km.toFixed(0)} km landform` : ""}
                     </span>
+                    {t.origin === "iau_gazetteer" && <span className="badge iau">IAU</span>}
                     {t.data_status === "synthetic" && (
                       <span className="badge synthetic">synthetic</span>
                     )}

@@ -131,3 +131,7 @@ Format: **ID — Title** · Date · Status · Decision · Why · Alternatives co
 **D-030 — EOX satellite layer off unless enabled** · 2026-11-14 · Accepted
 - Decision: the EOX layer is built only when `NEXT_PUBLIC_ENABLE_EOX=true`. Default is off.
 - Why: HANDOFF open question 2. EOX is non-commercial only and the owner has not confirmed non-commercial status yet.
+
+**D-031 — IAU names come from the USGS gazetteer, separate from curated targets** · 2026-11-15 · Accepted
+- Decision: `pipeline import-gazetteer` downloads the USGS center-point zips and writes `data/processed/gazetteer/catalog.json`. Curated files in `config/targets/` stay the prepared sites (`mars_jezero` remains the 10 km Perseverance landing square, not the IAU crater center). A gazetteer id that would collide with a curated id is skipped. The catalog keeps adopted Crater, Vallis, Chaos, Chasma, Cavus and Rima names of 10–60 km, and Moon names only inside ±60° latitude. The scored footprint is still the 10 km square at the feature center. A catalog name is not searchable until `pipeline target` builds its profile.
+- Why: the hackathon ships two prepared sites, and a few hundred official names should be choosable without a yaml file per name or a claim that the whole landform was scored. PDS and ODE list data products, not target catalogs.

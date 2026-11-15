@@ -16,6 +16,10 @@ export interface Target {
   preview_url: string | null;
   profile_status: "ready" | "not_ready";
   data_status: DataStatus | null;
+  origin?: "curated" | "iau_gazetteer";
+  diameter_km?: number | null;
+  feature_type?: string | null;
+  gazetteer_link?: string | null;
 }
 
 export interface Region {

@@ -17,11 +17,13 @@ from core.artifacts import ArtifactMissing, Artifacts, RunRecord, TargetProfileR
 from core.config import (
     GridConfig,
     ScoringConfig,
+    TargetConfig,
     load_grid,
     load_scoring,
     load_target,
     load_targets,
 )
+from core.gazetteer import feature_to_target, find_feature
 from core.provenance import git_sha
 
 
@@ -58,8 +60,17 @@ class Service:
         except FileNotFoundError as exc:
             raise NotReady("unknown_scoring_version", {"scoring_version": version}) from exc
 
+    def resolve_target(self, target_id: str) -> TargetConfig:
+        try:
+            return load_target(target_id)
+        except KeyError:
+            row = find_feature(self.artifacts.read_gazetteer_catalog(), target_id)
+            if row is None:
+                raise
+            return feature_to_target(row)
+
     def target_profile(self, target_id: str) -> TargetProfileRecord:
-        t = load_target(target_id)
+        t = self.resolve_target(target_id)
         try:
             return self.artifacts.read_target_profile(target_id, t.comparison.scale_m)
         except ArtifactMissing as exc:
@@ -88,30 +99,54 @@ class Service:
 
     # -------------------------------------------------- catalogue
 
+    def _target_row(
+        self,
+        t: TargetConfig,
+        *,
+        origin: str,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        try:
+            prof = self.artifacts.read_target_profile(t.id, t.comparison.scale_m)
+            status, data_status = "ready", prof.data_status
+            preview = self.artifacts.target_preview_path(t.id).exists()
+        except ArtifactMissing:
+            status, data_status, preview = "not_ready", None, False
+        row = {
+            "id": t.id,
+            "body": t.body.value,
+            "name": t.name,
+            "comparison": t.comparison.model_dump(),
+            "preview": {
+                "bbox": t.preview.bbox.model_dump(),
+                "note": t.preview.note.strip(),
+            },
+            "preview_url": f"/targets/{t.id}/preview.png" if preview else None,
+            "profile_status": status,
+            "data_status": data_status,
+            "origin": origin,
+        }
+        if extra:
+            row.update(extra)
+        return row
+
     def targets(self) -> list[dict[str, Any]]:
-        out = []
-        for t in load_targets().values():
-            try:
-                prof = self.artifacts.read_target_profile(t.id, t.comparison.scale_m)
-                status, data_status = "ready", prof.data_status
-                preview = self.artifacts.target_preview_path(t.id).exists()
-            except ArtifactMissing:
-                status, data_status, preview = "not_ready", None, False
-            out.append(
-                {
-                    "id": t.id,
-                    "body": t.body.value,
-                    "name": t.name,
-                    "comparison": t.comparison.model_dump(),
-                    "preview": {
-                        "bbox": t.preview.bbox.model_dump(),
-                        "note": t.preview.note.strip(),
-                    },
-                    "preview_url": f"/targets/{t.id}/preview.png" if preview else None,
-                    "profile_status": status,
-                    "data_status": data_status,
-                }
-            )
+        out = [self._target_row(t, origin="curated") for t in load_targets().values()]
+        catalog = self.artifacts.read_gazetteer_catalog()
+        if catalog:
+            for feature in catalog.get("targets", []):
+                t = feature_to_target(feature)
+                out.append(
+                    self._target_row(
+                        t,
+                        origin="iau_gazetteer",
+                        extra={
+                            "diameter_km": feature.get("diameter_km"),
+                            "feature_type": feature.get("feature_type"),
+                            "gazetteer_link": feature.get("gazetteer_link") or None,
+                        },
+                    )
+                )
         return out
 
     def regions(self) -> list[dict[str, Any]]:
@@ -153,7 +188,7 @@ class Service:
         except KeyError as exc:
             raise NotReady("unknown_region", {"region_id": req["region_id"]}) from exc
         try:
-            load_target(req["target_id"])
+            tcfg = self.resolve_target(req["target_id"])
         except KeyError as exc:
             raise NotReady("unknown_target", {"target_id": req["target_id"]}) from exc
         target = self.target_profile(req["target_id"])
@@ -189,6 +224,7 @@ class Service:
             registry=registry,
             scoring=scoring,
             grid=self.grid,
+            target_config=tcfg,
         )
         result["meta"]["api_code_version"] = self.code_version
         result["meta"]["cache_key"] = key

@@ -1,0 +1,28 @@
+# IAU names from the USGS Gazetteer of Planetary Nomenclature (center-point files).
+# A name here is a place that can become a target. It is not a scored profile until
+# `pipeline target` runs, and it is not an Earth-analog claim.
+version: gazetteer-v1
+footprint_m: 10000
+# A 10 km scored window on a landform much smaller or much larger is a different question.
+diameter_km_min: 10
+diameter_km_max: 60
+# Descriptor term, the text before the comma in the gazetteer `type` field.
+feature_types:
+  - Crater
+  - Vallis
+  - Chaos
+  - Chasma
+  - Cavus
+  - Rima
+bodies:
+  - body: mars
+    url: https://asc-planetarynames-data.s3.us-west-2.amazonaws.com/MARS_nomenclature_center_pts.zip
+    scale_m: 200
+    lat_min: -90
+    lat_max: 90
+  - body: moon
+    url: https://asc-planetarynames-data.s3.us-west-2.amazonaws.com/MOON_nomenclature_center_pts.zip
+    scale_m: 60
+    # SLDEM2015 covers about 60°S to 60°N. Names outside that have no comparison DEM.
+    lat_min: -60
+    lat_max: 60
