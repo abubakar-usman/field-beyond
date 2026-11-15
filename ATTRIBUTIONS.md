@@ -11,6 +11,7 @@ This app uses the following data. These credits must stay visible in the app (Ab
 | Known Terrestrial Analog Sites for Planetary Science | U.S. Geological Survey. Public domain |
 | Gazetteer of Planetary Nomenclature | IAU-adopted feature names, compiled by the USGS Astrogeology Science Center. Public domain. https://planetarynames.wr.usgs.gov/ |
 | NASA Planetary Analog Explorer | NASA |
+| Moon and Mars globe textures | Solar System Scope (https://www.solarsystemscope.com/textures/). CC BY 4.0. Colour imagery for the illustrative 3D globes only, not elevation data |
 | Base map | © OpenStreetMap contributors (ODbL), tiles by OpenFreeMap, OpenMapTiles |
 | Satellite layer | Sentinel-2 cloudless by EOX IT Services GmbH (Contains modified Copernicus Sentinel data, year as shown). Non-commercial use |
 | FABDEM (if used) | Hawker et al. (2022), University of Bristol / Fathom. CC BY-NC-SA 4.0. Produced using Copernicus WorldDEM-30 © DLR e.V. |

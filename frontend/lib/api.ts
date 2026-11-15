@@ -209,7 +209,40 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+export interface TargetDetail extends Target {
+  profile?: {
+    values: Record<string, number | number[] | null>;
+    availability: Record<string, boolean>;
+    meta: Record<string, unknown>;
+    run_id: string;
+    schema_version: string;
+    crs: string;
+    footprint_wkt: string;
+    source_asset_ids: string[];
+  };
+}
+
+export interface RescoreResponse {
+  search_id: string;
+  weights: Record<string, number>;
+  note: string;
+  windows: { cell_id: number; score: number; main_mismatch: string | null }[];
+}
+
+export interface Health {
+  status: "ok" | "degraded";
+  store: string;
+  store_detail: string;
+  code_version: string;
+  api_version: string;
+}
+
 export const api = {
+  // /health answers 503 when degraded; keep the body so the UI can show why.
+  health: async (): Promise<Health> => {
+    const res = await fetch("/api/health");
+    return (await res.json()) as Health;
+  },
   targets: () => call<Target[]>("/targets"),
   regions: () => call<Region[]>("/regions"),
   registry: () => call<RegistryResponse>("/registry"),
@@ -226,7 +259,16 @@ export const api = {
         scoring_version: "terrain-v1",
       }),
     }),
-  candidates: (searchId: string) => call<CandidatesResponse>(`/searches/${searchId}/candidates`),
+  candidates: (searchId: string, limit = 100) =>
+    call<CandidatesResponse>(`/searches/${searchId}/candidates?limit=${limit}`),
+  target: (targetId: string) => call<TargetDetail>(`/targets/${encodeURIComponent(targetId)}`),
+  run: (runId: string) =>
+    call<Record<string, unknown>>(`/processing-runs/${encodeURIComponent(runId)}`),
+  rescore: (searchId: string, weights: Record<string, number>) =>
+    call<RescoreResponse>(`/searches/${searchId}/rescore`, {
+      method: "POST",
+      body: JSON.stringify({ weights }),
+    }),
   evidence: (candidateId: string) => call<Evidence>(`/candidates/${candidateId}/evidence`),
   review: (
     candidateId: string,

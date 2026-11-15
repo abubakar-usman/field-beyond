@@ -46,7 +46,8 @@ export default function ResultsMap({
 }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
-  const [ready, setReady] = useState(false);
+  // The loaded map instance. A new (not yet loaded) map after a remount is never used.
+  const [loaded, setLoaded] = useState<maplibregl.Map | null>(null);
   const [showRefs, setShowRefs] = useState(true);
   const [showRegistry, setShowRegistry] = useState(false);
   const [showSat, setShowSat] = useState(false);
@@ -165,18 +166,19 @@ export default function ResultsMap({
           setHover(null);
         });
       }
-      setReady(true);
+      setLoaded(m);
     });
     map.current = m;
     return () => {
+      setLoaded(null);
       m.remove();
       map.current = null;
     };
   }, []);
 
   useEffect(() => {
-    const m = map.current;
-    if (!ready || !m || !region) return;
+    const m = loaded;
+    if (!m || !region) return;
     const b = region.bbox;
     (m.getSource("region") as GeoJSONSource).setData({
       type: "Feature",
@@ -201,33 +203,33 @@ export default function ResultsMap({
       ],
       { padding: 40, duration: 600 },
     );
-  }, [ready, region]);
+  }, [loaded, region]);
 
   useEffect(() => {
-    const m = map.current;
-    if (!ready || !m) return;
+    const m = loaded;
+    if (!m) return;
     (m.getSource("cands") as GeoJSONSource).setData(toFC(candidates));
     (m.getSource("refs") as GeoJSONSource).setData(showRefs ? toFC(references) : EMPTY);
-  }, [ready, candidates, references, showRefs]);
+  }, [loaded, candidates, references, showRefs]);
 
   useEffect(() => {
-    const m = map.current;
-    if (!ready || !m) return;
+    const m = loaded;
+    if (!m) return;
     (m.getSource("registry") as GeoJSONSource).setData(registry?.geojson ?? EMPTY);
     const vis = showRegistry ? "visible" : "none";
     m.setLayoutProperty("registry-fill", "visibility", vis);
     m.setLayoutProperty("registry-line", "visibility", vis);
-  }, [ready, registry, showRegistry]);
+  }, [loaded, registry, showRegistry]);
 
   useEffect(() => {
-    const m = map.current;
-    if (!ready || !m || !ENABLE_EOX) return;
+    const m = loaded;
+    if (!m || !ENABLE_EOX) return;
     m.setLayoutProperty("eox", "visibility", showSat ? "visible" : "none");
-  }, [ready, showSat]);
+  }, [loaded, showSat]);
 
   useEffect(() => {
-    const m = map.current;
-    if (!ready || !m) return;
+    const m = loaded;
+    if (!m) return;
     const sel = [...candidates, ...references].find((c) => c.id === selectedId);
     (m.getSource("members") as GeoJSONSource).setData(
       sel
@@ -248,7 +250,7 @@ export default function ResultsMap({
         duration: 600,
       });
     }
-  }, [ready, selectedId, candidates, references]);
+  }, [loaded, selectedId, candidates, references]);
 
   return (
     <div className="mapwrap">

@@ -27,6 +27,10 @@ const CREDITS: [string, string][] = [
     "Gazetteer of Planetary Nomenclature",
     "IAU-adopted names compiled by the USGS Astrogeology Science Center. Public domain. A listed name is a place that can be profiled; the scored footprint is the 10 km square at its center.",
   ],
+  [
+    "Moon and Mars globe textures",
+    "Solar System Scope (solarsystemscope.com/textures), CC BY 4.0. Colour imagery for the 3D globes only; the bump shading is derived from colour and is not measured elevation.",
+  ],
   ["Base map", "© OpenStreetMap contributors (ODbL), tiles by OpenFreeMap, OpenMapTiles."],
   [
     "Satellite layer (if enabled)",
@@ -37,7 +41,7 @@ const CREDITS: [string, string][] = [
 export default function About() {
   return (
     <main className="page">
-      <Link href="/">← Back to the map</Link>
+      <Link href="/">← Back to the explorer</Link>
       <h1>Method and data credits</h1>
 
       <section>
@@ -68,8 +72,8 @@ export default function About() {
         <p>
           Earth, Moon and Mars are measured on their own figures (WGS84; IAU 2015 spheres of
           1,737,400 m and 3,396,190 m). Planetary targets are never drawn on the Earth map; they
-          appear as hillshade images. Elevation data is only ever averaged down to a coarser grid,
-          never up.
+          appear as hillshade images or on an illustrative 3D globe of their own body. Elevation
+          data is only ever averaged down to a coarser grid, never up.
         </p>
       </section>
 
