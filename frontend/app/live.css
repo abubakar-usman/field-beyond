@@ -684,12 +684,14 @@
   .header-actions .help-button span {
     display: none;
   }
+  /* Three columns; tolerance and similarity wrap onto a second line rather than hide,
+     so every feature still shows both values and its tolerance (CLAUDE.md). */
   .metric-panel .metric-row {
     grid-template-columns: 1.3fr 1fr 1fr;
+    row-gap: 4px;
   }
-  .metric-panel .metric-row > span:nth-child(4),
-  .metric-panel .metric-row > span:nth-child(5) {
-    display: none;
+  .metric-panel .metric-row > span:nth-child(4) {
+    grid-column: 2;
   }
   .side-by-side .terrain-view {
     height: 300px;

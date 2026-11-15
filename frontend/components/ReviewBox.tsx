@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api, type NoveltyStatus, type Review } from "@/lib/api";
+import { ApiError, api, type NoveltyStatus, type Review } from "@/lib/api";
 import { NOVELTY_LABEL } from "@/lib/copy";
 
 const NEXT: Record<NoveltyStatus, NoveltyStatus[]> = {
@@ -53,7 +53,14 @@ export default function ReviewBox({
       setMsg("Saved.");
       onDone();
     } catch (e) {
-      setMsg(`Not saved: ${(e as Error).message}`);
+      const status = e instanceof ApiError ? e.status : 0;
+      setMsg(
+        status === 503
+          ? "Not saved: reviews are turned off because the API was started without DEMO_TOKEN. Start it with scripts/local/dev.ps1 -NoDocker (or Docker), then use the token from .env."
+          : status === 401
+            ? "Not saved: the demo token is missing or wrong. Use the DEMO_TOKEN value from .env."
+            : `Not saved: ${(e as Error).message}`,
+      );
     } finally {
       setBusy(false);
     }
