@@ -97,7 +97,11 @@ export default function ReviewBox({
         <label htmlFor="rv-name">Reviewer name</label>
         <input
           id="rv-name"
+          name="reviewer"
           type="text"
+          autoComplete="off"
+          data-lpignore="true"
+          data-1p-ignore
           value={reviewer}
           onChange={(e) => setReviewer(e.target.value)}
         />
@@ -110,8 +114,16 @@ export default function ReviewBox({
         <label htmlFor="rv-token">Demo token</label>
         <input
           id="rv-token"
-          type="password"
+          name="demo-token"
+          // Not type="password": that makes browsers treat this as a login form and
+          // offer the user's saved email and password. The characters are masked in CSS.
+          type="text"
+          className="masked"
           autoComplete="off"
+          spellCheck={false}
+          autoCapitalize="off"
+          data-lpignore="true"
+          data-1p-ignore
           value={token}
           onChange={(e) => setToken(e.target.value)}
         />

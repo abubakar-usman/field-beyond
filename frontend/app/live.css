@@ -731,3 +731,9 @@
     height: 300px;
   }
 }
+
+/* Review token: masked without type="password" so browsers do not offer saved logins. */
+.masked {
+  -webkit-text-security: disc;
+  text-security: disc;
+}

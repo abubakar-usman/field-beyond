@@ -37,13 +37,7 @@ import {
   type RescoreResponse,
   type Target,
 } from "@/lib/api";
-import {
-  FEATURE_LABEL,
-  SCORE_NOTE,
-  fmtScore,
-  fmtValue,
-  noveltyLabel,
-} from "@/lib/copy";
+import { FEATURE_LABEL, SCORE_NOTE, fmtScore, fmtValue, noveltyLabel } from "@/lib/copy";
 import { coordinate, targetPoint, type Planet } from "@/lib/planets";
 import { TOP_K_CHOICES } from "@/lib/urlState";
 
